@@ -286,7 +286,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.all(16.0),
                     child: ElevatedButton.icon(
                       onPressed: () async {
                         await Navigator.push(
