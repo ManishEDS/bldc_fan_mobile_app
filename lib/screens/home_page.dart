@@ -69,38 +69,6 @@ class _MyHomePageState extends State<MyHomePage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              if (value == 'test') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ControllerScreen(
-                      deviceId: _deviceRooms.keys.isNotEmpty
-                          ? _deviceRooms.keys.first
-                          : 'test-id',
-                      deviceName: _deviceNames.isNotEmpty
-                          ? _deviceNames[_deviceRooms.keys.first] ??
-                                'Test Device'
-                          : 'Test Device',
-                      roomName: _deviceRooms.isNotEmpty
-                          ? _deviceRooms[_deviceRooms.keys.first] ?? 'Default'
-                          : 'Default',
-                      macAddress: _deviceMacs.isNotEmpty
-                          ? _deviceMacs[_deviceRooms.keys.first] ?? ''
-                          : '',
-                    ),
-                  ),
-                );
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'test', child: Text('Test')),
-            ],
-          ),
-        ],
       ),
       body: SafeArea(
         child: _isLoading

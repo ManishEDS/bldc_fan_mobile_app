@@ -166,9 +166,9 @@ class _ControllerScreenState extends State<ControllerScreen>
         color: colorScheme.onSurface,
         centerColor: _isLedOn
             ? Colors.yellow
-            : colorScheme.surfaceContainerHighest, // <-- yellow if bulb is on
+            : colorScheme.surfaceContainerHighest,
       ),
-      speedLevel: _isFanOn ? _fanSpeed : 0, // 0 stops the animation
+      speedLevel: _isFanOn ? _fanSpeed : 0, // This is correct!
     );
   }
 
@@ -842,9 +842,18 @@ class _RotatingFanState extends State<_RotatingFan>
   void didUpdateWidget(covariant _RotatingFan oldWidget) {
     super.didUpdateWidget(oldWidget);
     final newDuration = _durationForSpeed(widget.speedLevel);
+
+    // Always update duration
     if (_rotController.duration != newDuration) {
+      final value = _rotController.value;
       _rotController.duration = newDuration;
+      if (widget.speedLevel > 0) {
+        _rotController.repeat();
+        _rotController.value = value;
+      }
     }
+
+    // Start/stop animation as needed
     if (widget.speedLevel > 0) {
       if (!_rotController.isAnimating) {
         _rotController.repeat();
@@ -861,8 +870,6 @@ class _RotatingFanState extends State<_RotatingFan>
   }
 
   Duration _durationForSpeed(double speed) {
-    // Map speed 1-7 to duration: higher speed = faster spin (shorter duration)
-    // Example: speed 1 = 2s, speed 7 = 0.4s
     final minDuration = 0.4; // seconds
     final maxDuration = 2.0; // seconds
     double t = ((speed.clamp(1, 7)) - 1) / 6; // 0 for 1, 1 for 7

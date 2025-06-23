@@ -261,28 +261,6 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
       appBar: AppBar(
         title: const Text('Searching for Fans'),
         backgroundColor: theme.colorScheme.primary,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              if (value == 'test') {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => MyHomePage(
-                      title: 'BLDC Fan',
-                      toggleTheme:
-                          () {}, // Provide your toggleTheme callback if needed
-                      isDarkMode: widget.isDarkMode,
-                    ),
-                  ),
-                );
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'test', child: Text('Test')),
-            ],
-          ),
-        ],
       ),
       body: scanResults.isEmpty
           ? Center(
