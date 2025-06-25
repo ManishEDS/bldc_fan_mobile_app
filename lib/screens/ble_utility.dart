@@ -142,112 +142,54 @@ class BLEUtility {
   }
 
   // Method to send data to the connected BLE device
-  static Future<void> sendDataToDevice(String message) async {
-    // Check if a device is connected
+  static Future<void> sendDataToDevice(List<int> messageBytes) async {
     if (connectedDevice == null) {
-      if (kDebugMode) {
-        print('No device is connected.');
-      }
+      if (kDebugMode) print('No device is connected.');
       return;
     }
 
-    // // // Check if the device is enabled (replace 'enabled' with the actual check for your device)
-    // bool isDeviceEnabled = await checkDeviceEnabledStatus();
-    // if (!isDeviceEnabled) {
-    //   if (kDebugMode) {
-    //     message = "BRIGHTNESS_0";
-    //     print('Device is disabled. Data will not be sent.');
-    //   }
-    //   return;
-    // }
-
-    if (kDebugMode) {
-      print('Sending data to device: ${connectedDevice!.remoteId}');
-    }
-
     try {
-      // Ensure services are discovered
       List<BluetoothService> services = await connectedDevice!
           .discoverServices();
-      if (kDebugMode) {
-        print('Discovered services: $services');
-      }
-
-      // Use the first available service (adjust index as needed)
       if (services.isNotEmpty) {
-        BluetoothService targetService = services[0]; // Access first service
-        if (kDebugMode) {
-          print('Target service: ${targetService.uuid}');
-        }
-
+        BluetoothService targetService = services[0];
         List<BluetoothCharacteristic> characteristics =
             targetService.characteristics;
 
-        // Ensure characteristics are available
-        if (characteristics.isNotEmpty) {
-          BluetoothCharacteristic targetCharacteristic =
-              characteristics[1]; // Access second characteristic
-          if (kDebugMode) {
-            print('Target characteristic: ${targetCharacteristic.uuid}');
-          }
-
-          // Convert the message to bytes
-          List<int> messageBytes = utf8.encode(message);
-
-          // Platform-specific behavior
-          if (Platform.isAndroid) {
-            // Handle Android write
-            if (targetCharacteristic.properties.write) {
-              await targetCharacteristic.write(messageBytes);
-              if (kDebugMode) {
-                print(
-                  'Sent message on Android: "$message" to ${connectedDevice!.remoteId}',
-                );
-              }
-            } else {
-              if (kDebugMode) {
-                print('Characteristic is not writable on Android');
-              }
-            }
-          } else if (Platform.isIOS) {
-            // Handle iOS write (iOS often prefers writeWithoutResponse for faster communication)
-            if (targetCharacteristic.properties.writeWithoutResponse) {
-              await targetCharacteristic.write(
-                messageBytes,
-                withoutResponse: true,
-              );
-              if (kDebugMode) {
-                print(
-                  'Sent message on iOS (without response): "$message" to ${connectedDevice!.remoteId}',
-                );
-              }
-            } else if (targetCharacteristic.properties.write) {
-              await targetCharacteristic.write(messageBytes);
-              if (kDebugMode) {
-                print(
-                  'Sent message on iOS (with response): "$message" to ${connectedDevice!.remoteId}',
-                );
-              }
-            } else {
-              if (kDebugMode) {
-                print('Characteristic is not writable on iOS');
-              }
-            }
-          }
-        } else {
-          if (kDebugMode) {
-            print('No characteristics found');
+        // Find the first writable characteristic
+        BluetoothCharacteristic? targetCharacteristic;
+        for (final c in characteristics) {
+          if (c.properties.write) {
+            targetCharacteristic = c;
+            break;
           }
         }
-      } else {
-        if (kDebugMode) {
-          print('No services found');
+        if (targetCharacteristic == null) {
+          if (kDebugMode) print('No writable characteristic found');
+          return;
+        }
+
+        // Try both write types
+        try {
+          await targetCharacteristic.write(messageBytes);
+          if (kDebugMode) print('Sent message on Android: $messageBytes');
+        } catch (e) {
+          if (kDebugMode)
+            print('Write with response failed: $e. Trying without response...');
+          try {
+            await targetCharacteristic.write(
+              messageBytes,
+              withoutResponse: true,
+            );
+            if (kDebugMode)
+              print('Sent message on Android (no response): $messageBytes');
+          } catch (e2) {
+            if (kDebugMode) print('Write without response also failed: $e2');
+          }
         }
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error sending data to device: $e');
-      }
+      if (kDebugMode) print('Error sending data to device: $e');
     }
   }
 

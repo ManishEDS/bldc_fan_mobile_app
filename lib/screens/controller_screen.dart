@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '/screens/ble_utility.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'ble.dart'; // or 'package:your_app/ble.dart';
 
 class ControllerScreen extends StatefulWidget {
   final String deviceId;
@@ -112,12 +113,24 @@ class _ControllerScreenState extends State<ControllerScreen>
       }
 
       List<BluetoothService> services = await device.discoverServices();
+      for (final service in services) {
+        print('Service: ${service.uuid}');
+        for (final c in service.characteristics) {
+          print('Characteristic: ${c.uuid} props: ${c.properties}');
+        }
+      }
       _writeCharacteristic = services
           .expand((service) => service.characteristics)
           .firstWhere(
-            (c) => c.properties.write,
-            orElse: () => throw Exception('No writable characteristic found'),
+            (c) =>
+                c.uuid.toString().toLowerCase() ==
+                    'd973f2e1-b19e-11e2-9e96-0800200c9a66' ||
+                c.uuid.toString().toLowerCase() ==
+                    'd973f2e2-b19e-11e2-9e96-0800200c9a66',
+            orElse: () =>
+                throw Exception('No correct writable characteristic found'),
           );
+      BLEHelper.setWriteCharacteristic(_writeCharacteristic!);
     } catch (e) {
       print('Bluetooth connection error: $e');
     }
@@ -143,10 +156,8 @@ class _ControllerScreenState extends State<ControllerScreen>
       _timerRemaining = minutes * 60;
     });
     if (minutes > 0) {
-      // Send as string code (hex, uppercase, 2 chars)
-      BLEUtility.sendDataToDevice(
-        code.toRadixString(16).padLeft(2, '0').toUpperCase(),
-      );
+      // Send as byte code
+      BLEHelper.send([code]);
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (_timerRemaining > 0) {
           setState(() {
@@ -347,11 +358,11 @@ class _ControllerScreenState extends State<ControllerScreen>
                         });
                         // Send speed command as string hex
                         if (_fanSpeed == 6) {
-                          BLEUtility.sendDataToDevice('1A');
+                          BLEHelper.send([0x1A]);
                         } else if (_fanSpeed == 7) {
-                          BLEUtility.sendDataToDevice('0C');
+                          BLEHelper.send([0x0C]);
                         } else {
-                          BLEUtility.sendDataToDevice('05');
+                          BLEHelper.send([0x05]);
                         }
                       },
                       selectedColor: colorScheme.onPrimary,
@@ -444,25 +455,25 @@ class _ControllerScreenState extends State<ControllerScreen>
                                     // Send speed command as string hex
                                     switch (snapped) {
                                       case 1:
-                                        BLEUtility.sendDataToDevice('05');
+                                        BLEHelper.send([GEAR1]);
                                         break;
                                       case 2:
-                                        BLEUtility.sendDataToDevice('0F');
+                                        BLEHelper.send([GEAR2]);
                                         break;
                                       case 3:
-                                        BLEUtility.sendDataToDevice('0A');
+                                        BLEHelper.send([GEAR3]);
                                         break;
                                       case 4:
-                                        BLEUtility.sendDataToDevice('03');
+                                        BLEHelper.send([GEAR4]);
                                         break;
                                       case 5:
-                                        BLEUtility.sendDataToDevice('02');
+                                        BLEHelper.send([GEAR5]);
                                         break;
                                       case 6:
-                                        BLEUtility.sendDataToDevice('1A');
+                                        BLEHelper.send([GEAR6]);
                                         break;
                                       case 7:
-                                        BLEUtility.sendDataToDevice('0C');
+                                        BLEHelper.send([GEAR7]);
                                         break;
                                     }
                                   },
@@ -649,7 +660,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                             setState(() {
                               _isFanOn = newState;
                             });
-                            BLEUtility.sendDataToDevice(newState ? '0E' : '06');
+                            BLEHelper.send([newState ? FANON : FANOFF]);
                           },
                           child: Container(
                             decoration: BoxDecoration(

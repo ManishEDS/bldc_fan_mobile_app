@@ -164,8 +164,8 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
     try {
       // Connect to device
       await device.connect(
-        timeout: const Duration(seconds: 10),
-        autoConnect: true,
+        //timeout: const Duration(seconds: 10),
+        autoConnect: false,
       );
 
       // Discover services
