@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print, use_build_context_synchronously, duplicate_ignore, constant_identifier_names
+// ignore_for_file: avoid_print, use_build_context_synchronously, constant_identifier_names
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
@@ -6,19 +6,22 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'dart:math';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
+import '/screens/ble_utility.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class ControllerScreen extends StatefulWidget {
   final String deviceId;
   final String deviceName;
   final String roomName;
-  final String macAddress; // <-- Add this line
+  final String macAddress;
 
   const ControllerScreen({
     super.key,
     required this.deviceId,
     required this.deviceName,
     required this.roomName,
-    required this.macAddress, // <-- Add this line
+    required this.macAddress,
   });
 
   @override
@@ -27,39 +30,37 @@ class ControllerScreen extends StatefulWidget {
 
 class _ControllerScreenState extends State<ControllerScreen>
     with SingleTickerProviderStateMixin {
-  late BluetoothCharacteristic characteristic;
   double _fanSpeed = 0.0;
   int _timerValue = 0;
-
   bool _isFanOn = false;
   bool _isLedOn = false;
   int _fanModeIndex = 0; // 0: Normal, 1: Speed, 2: Turbo
-
   final List<String> _fanModes = ['Normal', 'Speed', 'Boost'];
-
   Timer? _timer;
   int _timerRemaining = 0;
 
   BluetoothDevice? _device;
+  BluetoothCharacteristic? _writeCharacteristic;
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
 
-  static const int KEY_FUNCTION_CODE_FANON = 0x0E;
-  static const int KEY_FUNCTION_CODE_FANOFF = 0x06;
-  static const int KEY_FUNCTION_CODE_GEAR1 = 0x05;
-  static const int KEY_FUNCTION_CODE_GEAR2 = 0x0F;
-  static const int KEY_FUNCTION_CODE_GEAR3 = 0x0A;
-  static const int KEY_FUNCTION_CODE_GEAR4 = 0x03;
-  static const int KEY_FUNCTION_CODE_GEAR5 = 0x02;
-  static const int KEY_FUNCTION_CODE_GEAR6 = 0x1A;
-  static const int KEY_FUNCTION_CODE_GEAR7 = 0x0C;
-  static const int KEY_FUNCTION_CODE_R5M = 0x1F;
-  static const int KEY_FUNCTION_CODE_R30M = 0xDD;
-  static const int KEY_FUNCTION_CODE_R1H = 0x10;
-  static const int KEY_FUNCTION_CODE_R2H = 0x0D;
-  static const int KEY_FUNCTION_CODE_R4H = 0x01;
-  static const int KEY_FUNCTION_CODE_R6H = 0x09;
-  static const int KEY_FUNCTION_CODE_R8H = 0x07;
+  // BLE command codes
+  static const int FANON = 0x0E;
+  static const int FANOFF = 0x06;
+  static const int GEAR1 = 0x05;
+  static const int GEAR2 = 0x0F;
+  static const int GEAR3 = 0x0A;
+  static const int GEAR4 = 0x03;
+  static const int GEAR5 = 0x02;
+  static const int GEAR6 = 0x1A;
+  static const int GEAR7 = 0x0C;
+  static const int R5M = 0x1F;
+  static const int R30M = 0xDD;
+  static const int R1H = 0x10;
+  static const int R2H = 0x0D;
+  static const int R4H = 0x01;
+  static const int R6H = 0x09;
+  static const int R8H = 0x07;
 
   @override
   void initState() {
@@ -74,14 +75,78 @@ class _ControllerScreenState extends State<ControllerScreen>
     super.dispose();
   }
 
-  void _startTimer(int minutes) {
+  Future<void> _connectToDevice() async {
+    try {
+      final device = BluetoothDevice.fromId(widget.deviceId);
+      setState(() {
+        _device = device;
+      });
+
+      BLEUtility.connectedDevice = device;
+
+      // Force enable the device in SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      List<String> savedDevices = prefs.getStringList('saved_devices') ?? [];
+      for (int i = 0; i < savedDevices.length; i++) {
+        final dev = jsonDecode(savedDevices[i]);
+        if (dev['id'] == device.remoteId.toString()) {
+          dev['enabled'] = true;
+          savedDevices[i] = jsonEncode(dev);
+        }
+      }
+      await prefs.setStringList('saved_devices', savedDevices);
+
+      device.connectionState.listen((state) {
+        setState(() {
+          _connectionState = state;
+        });
+        if (state == BluetoothConnectionState.connected) {
+          BLEUtility.connectedDevice = device;
+        } else {
+          BLEUtility.connectedDevice = null;
+        }
+      });
+
+      if (_connectionState != BluetoothConnectionState.connected) {
+        await device.connect(autoConnect: false);
+      }
+
+      List<BluetoothService> services = await device.discoverServices();
+      _writeCharacteristic = services
+          .expand((service) => service.characteristics)
+          .firstWhere(
+            (c) => c.properties.write,
+            orElse: () => throw Exception('No writable characteristic found'),
+          );
+    } catch (e) {
+      print('Bluetooth connection error: $e');
+    }
+  }
+
+  Future<void> _requestPermissions() async {
+    if (Platform.isAndroid) {
+      await Permission.bluetoothScan.request();
+      await Permission.bluetoothConnect.request();
+      await Permission.bluetooth.request();
+      await Permission.bluetoothAdvertise.request();
+      await Permission.locationWhenInUse.request();
+      await Permission.location.request();
+    } else if (Platform.isIOS) {
+      await Permission.locationWhenInUse.request();
+    }
+  }
+
+  void _startTimer(int minutes, int code) {
     _timer?.cancel();
     setState(() {
       _timerValue = minutes;
       _timerRemaining = minutes * 60;
     });
     if (minutes > 0) {
-      _sendTimerCommand(minutes); // <-- Send the timer code here
+      // Send as string code (hex, uppercase, 2 chars)
+      BLEUtility.sendDataToDevice(
+        code.toRadixString(16).padLeft(2, '0').toUpperCase(),
+      );
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (_timerRemaining > 0) {
           setState(() {
@@ -116,50 +181,6 @@ class _ControllerScreenState extends State<ControllerScreen>
     }
   }
 
-  Future<void> _connectToDevice() async {
-    try {
-      print('Connecting to Device ID: ${widget.deviceId}');
-      final device = BluetoothDevice.fromId(
-        widget.deviceId,
-      ); // <-- Use deviceId here
-      setState(() {
-        _device = device;
-      });
-
-      // Listen to connection state changes
-      device.connectionState.listen((state) {
-        setState(() {
-          _connectionState = state;
-        });
-      });
-
-      // Try to connect if not already connected
-      if (_connectionState != BluetoothConnectionState.connected) {
-        await device.connect(autoConnect: false);
-      }
-    } catch (e) {
-      print('Bluetooth connection error: $e');
-    }
-  }
-
-  Future<void> _requestPermissions() async {
-    if (Platform.isAndroid) {
-      // Android 12+ permissions
-      await Permission.bluetoothScan.request();
-      await Permission.bluetoothConnect.request();
-      await Permission.bluetooth.request();
-      await Permission.bluetoothAdvertise.request();
-
-      // Location permissions (required for BLE scanning on Android <12 and recommended for all)
-      await Permission.locationWhenInUse.request();
-      await Permission.location.request();
-    } else if (Platform.isIOS) {
-      // iOS location permission for BLE
-      await Permission.locationWhenInUse.request();
-    }
-  }
-
-  // Helper widget: builds fan graphic.
   Widget _buildFanGraphic(ColorScheme colorScheme) {
     return _RotatingFan(
       fanPainter: _FanPainter(
@@ -168,108 +189,8 @@ class _ControllerScreenState extends State<ControllerScreen>
             ? Colors.yellow
             : colorScheme.surfaceContainerHighest,
       ),
-      speedLevel: _isFanOn ? _fanSpeed : 0, // This is correct!
+      speedLevel: _isFanOn ? _fanSpeed : 0,
     );
-  }
-
-  // Helper widget: builds bulb graphic.
-
-  Future<void> _sendFanPowerCommand(bool turnOn) async {
-    try {
-      if (_device == null) return;
-      // Discover services and characteristics if not already done
-      List<BluetoothService> services = await _device!.discoverServices();
-      // Find the correct characteristic (replace with your actual UUID)
-      final characteristic = services
-          .expand((service) => service.characteristics)
-          .firstWhere(
-            (c) => c.properties.write,
-            orElse: () => throw Exception('No writable characteristic found'),
-          );
-      await characteristic.write([
-        turnOn ? KEY_FUNCTION_CODE_FANON : KEY_FUNCTION_CODE_FANOFF,
-      ]);
-    } catch (e) {
-      print('Error sending fan power command: $e');
-    }
-  }
-
-  // Helper to get the code for a given fan speed (1-7)
-  int _getFanSpeedCode(int speed) {
-    switch (speed) {
-      case 1:
-        return KEY_FUNCTION_CODE_GEAR1;
-      case 2:
-        return KEY_FUNCTION_CODE_GEAR2;
-      case 3:
-        return KEY_FUNCTION_CODE_GEAR3;
-      case 4:
-        return KEY_FUNCTION_CODE_GEAR4;
-      case 5:
-        return KEY_FUNCTION_CODE_GEAR5;
-      case 6:
-        return KEY_FUNCTION_CODE_GEAR6;
-      case 7:
-        return KEY_FUNCTION_CODE_GEAR7;
-      default:
-        return KEY_FUNCTION_CODE_GEAR1;
-    }
-  }
-
-  // Send fan speed command
-  Future<void> _sendFanSpeedCommand(int speed) async {
-    try {
-      if (_device == null) return;
-      List<BluetoothService> services = await _device!.discoverServices();
-      final characteristic = services
-          .expand((service) => service.characteristics)
-          .firstWhere(
-            (c) => c.properties.write,
-            orElse: () => throw Exception('No writable characteristic found'),
-          );
-      await characteristic.write([_getFanSpeedCode(speed)]);
-    } catch (e) {
-      print('Error sending fan speed command: $e');
-    }
-  }
-
-  // Helper to get the code for a given timer value (in minutes)
-  int _getTimerCode(int minutes) {
-    switch (minutes) {
-      case 5:
-        return KEY_FUNCTION_CODE_R5M;
-      case 30:
-        return KEY_FUNCTION_CODE_R30M;
-      case 60:
-        return KEY_FUNCTION_CODE_R1H;
-      case 120:
-        return KEY_FUNCTION_CODE_R2H;
-      case 240:
-        return KEY_FUNCTION_CODE_R4H;
-      case 360:
-        return KEY_FUNCTION_CODE_R6H;
-      case 480:
-        return KEY_FUNCTION_CODE_R8H;
-      default:
-        return KEY_FUNCTION_CODE_R5M;
-    }
-  }
-
-  // Send timer command
-  Future<void> _sendTimerCommand(int minutes) async {
-    try {
-      if (_device == null) return;
-      List<BluetoothService> services = await _device!.discoverServices();
-      final characteristic = services
-          .expand((service) => service.characteristics)
-          .firstWhere(
-            (c) => c.properties.write,
-            orElse: () => throw Exception('No writable characteristic found'),
-          );
-      await characteristic.write([_getTimerCode(minutes)]);
-    } catch (e) {
-      print('Error sending timer command: $e');
-    }
   }
 
   @override
@@ -344,9 +265,9 @@ class _ControllerScreenState extends State<ControllerScreen>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Device ID: ${widget.deviceId}', // <-- Show Device ID instead of MAC
+                          'Device ID: ${widget.deviceId}',
                           style: textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: colorScheme.onSurface.withOpacity(0.6),
                           ),
                         ),
                       ],
@@ -366,14 +287,13 @@ class _ControllerScreenState extends State<ControllerScreen>
             SingleChildScrollView(
               child: Column(
                 children: [
-                  // Theme-colored container with mediaQuery
                   Container(
                     width: double.infinity,
                     padding: EdgeInsets.symmetric(
                       vertical: mediaQuery.size.height * 0.03,
                     ),
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      color: colorScheme.primary.withOpacity(0.1),
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(16),
                         bottomRight: Radius.circular(16),
@@ -385,7 +305,6 @@ class _ControllerScreenState extends State<ControllerScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             SizedBox(height: mediaQuery.size.height * 0.02),
-                            // Fan graphic
                             Center(
                               child: SizedBox(
                                 height: mediaQuery.size.height * 0.15,
@@ -393,13 +312,10 @@ class _ControllerScreenState extends State<ControllerScreen>
                               ),
                             ),
                             SizedBox(height: mediaQuery.size.height * 0.02),
-                            // Text below the fan
                             Text(
                               'Bluetooth is required to control.',
                               style: textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurface.withValues(
-                                  alpha: 0.7,
-                                ),
+                                color: colorScheme.onSurface.withOpacity(0.7),
                               ),
                             ),
                             SizedBox(height: mediaQuery.size.height * 0.04),
@@ -418,20 +334,25 @@ class _ControllerScreenState extends State<ControllerScreen>
                       onPressed: (index) {
                         setState(() {
                           _fanModeIndex = index;
-                          // Sync dial with mode
                           if (_fanModeIndex == 1) {
                             _fanSpeed = 6;
                           } else if (_fanModeIndex == 2) {
                             _fanSpeed = 7;
                           }
-                          // Sync mode with dial
                           if (_fanSpeed == 6) {
                             _fanModeIndex = 1;
                           } else if (_fanSpeed == 7) {
                             _fanModeIndex = 2;
                           }
                         });
-                        _sendFanSpeedCommand(_fanSpeed.round());
+                        // Send speed command as string hex
+                        if (_fanSpeed == 6) {
+                          BLEUtility.sendDataToDevice('1A');
+                        } else if (_fanSpeed == 7) {
+                          BLEUtility.sendDataToDevice('0C');
+                        } else {
+                          BLEUtility.sendDataToDevice('05');
+                        }
                       },
                       selectedColor: colorScheme.onPrimary,
                       fillColor: colorScheme.primary,
@@ -456,16 +377,16 @@ class _ControllerScreenState extends State<ControllerScreen>
                       height: mediaQuery.size.width * 0.45,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: colorScheme.surfaceContainerHighest.withValues(
-                          alpha: 0.2,
+                        color: colorScheme.surfaceContainerHighest.withOpacity(
+                          0.2,
                         ),
                         border: Border.all(
-                          color: colorScheme.primary.withValues(alpha: 0.4),
+                          color: colorScheme.primary.withOpacity(0.4),
                           width: 4,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: colorScheme.primary.withValues(alpha: 0.08),
+                            color: colorScheme.primary.withOpacity(0.08),
                             blurRadius: 12,
                             spreadRadius: 2,
                           ),
@@ -476,16 +397,14 @@ class _ControllerScreenState extends State<ControllerScreen>
                           axes: <RadialAxis>[
                             RadialAxis(
                               minimum: 1,
-                              maximum: 8, // Changed from 5 to 7
+                              maximum: 7,
                               interval: 1,
                               showLabels: false,
                               showTicks: false,
                               axisLineStyle: AxisLineStyle(
                                 thickness: 0.2,
                                 thicknessUnit: GaugeSizeUnit.factor,
-                                color: colorScheme.primary.withValues(
-                                  alpha: 0.15,
-                                ),
+                                color: colorScheme.primary.withOpacity(0.15),
                               ),
                               pointers: <GaugePointer>[
                                 RangePointer(
@@ -502,18 +421,50 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   markerWidth: 30,
                                   enableDragging: true,
                                   onValueChanged: (value) {
+                                    final snapped = value
+                                        .round()
+                                        .clamp(1, 7)
+                                        .toDouble();
                                     setState(() {
-                                      _fanSpeed = value;
-                                      // Sync mode with dial
-                                      if (_fanSpeed.round() == 6) {
+                                      _fanSpeed = snapped;
+                                      if (_fanSpeed == 6) {
                                         _fanModeIndex = 1;
-                                      } else if (_fanSpeed.round() == 7) {
+                                      } else if (_fanSpeed == 7) {
                                         _fanModeIndex = 2;
-                                      } else if (_fanSpeed.round() < 6) {
+                                      } else if (_fanSpeed < 6) {
                                         _fanModeIndex = 0;
                                       }
                                     });
-                                    _sendFanSpeedCommand(_fanSpeed.round());
+                                  },
+                                  onValueChangeEnd: (value) {
+                                    final snapped = value.round().clamp(1, 7);
+                                    setState(() {
+                                      _fanSpeed = snapped.toDouble();
+                                    });
+                                    // Send speed command as string hex
+                                    switch (snapped) {
+                                      case 1:
+                                        BLEUtility.sendDataToDevice('05');
+                                        break;
+                                      case 2:
+                                        BLEUtility.sendDataToDevice('0F');
+                                        break;
+                                      case 3:
+                                        BLEUtility.sendDataToDevice('0A');
+                                        break;
+                                      case 4:
+                                        BLEUtility.sendDataToDevice('03');
+                                        break;
+                                      case 5:
+                                        BLEUtility.sendDataToDevice('02');
+                                        break;
+                                      case 6:
+                                        BLEUtility.sendDataToDevice('1A');
+                                        break;
+                                      case 7:
+                                        BLEUtility.sendDataToDevice('0C');
+                                        break;
+                                    }
                                   },
                                 ),
                               ],
@@ -562,9 +513,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: colorScheme.primary.withValues(
-                                    alpha: 0.15,
-                                  ),
+                                  color: colorScheme.primary.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -610,7 +559,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                               _TimerButton(
                                 label: '5m',
                                 selected: _timerValue == 5,
-                                onTap: () => _startTimer(5),
+                                onTap: () => _startTimer(5, 0x1F),
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
                               ),
@@ -618,7 +567,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                               _TimerButton(
                                 label: '30m',
                                 selected: _timerValue == 30,
-                                onTap: () => _startTimer(30),
+                                onTap: () => _startTimer(30, 0xDD),
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
                               ),
@@ -626,7 +575,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                               _TimerButton(
                                 label: '1h',
                                 selected: _timerValue == 60,
-                                onTap: () => _startTimer(60),
+                                onTap: () => _startTimer(60, 0x10),
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
                               ),
@@ -634,7 +583,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                               _TimerButton(
                                 label: '2h',
                                 selected: _timerValue == 120,
-                                onTap: () => _startTimer(120),
+                                onTap: () => _startTimer(120, 0x0D),
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
                               ),
@@ -642,7 +591,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                               _TimerButton(
                                 label: '4h',
                                 selected: _timerValue == 240,
-                                onTap: () => _startTimer(240),
+                                onTap: () => _startTimer(240, 0x01),
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
                               ),
@@ -650,7 +599,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                               _TimerButton(
                                 label: '6h',
                                 selected: _timerValue == 360,
-                                onTap: () => _startTimer(360),
+                                onTap: () => _startTimer(360, 0x09),
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
                               ),
@@ -658,7 +607,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                               _TimerButton(
                                 label: '8h',
                                 selected: _timerValue == 480,
-                                onTap: () => _startTimer(480),
+                                onTap: () => _startTimer(480, 0x07),
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
                               ),
@@ -674,11 +623,8 @@ class _ControllerScreenState extends State<ControllerScreen>
             // Floating Power Button (overlapping container and body)
             Positioned(
               top: mediaQuery.size.height * 0.28,
-              left:
-                  mediaQuery.size.width / 2 -
-                  64, // Center the combined button (128 width)
+              left: mediaQuery.size.width / 2 - 64,
               child: GestureDetector(
-                // Optionally, you can handle tap for each side separately using GestureDetector for each child.
                 child: Container(
                   width: 128,
                   height: 64,
@@ -687,7 +633,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: colorScheme.primary.withValues(alpha: 0.15),
+                        color: colorScheme.primary.withOpacity(0.15),
                         blurRadius: 8,
                         spreadRadius: 2,
                       ),
@@ -703,7 +649,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                             setState(() {
                               _isFanOn = newState;
                             });
-                            await _sendFanPowerCommand(newState);
+                            BLEUtility.sendDataToDevice(newState ? '0E' : '06');
                           },
                           child: Container(
                             decoration: BoxDecoration(
@@ -722,9 +668,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   Icons.air,
                                   color: _isFanOn
                                       ? colorScheme.onPrimary
-                                      : colorScheme.onSurface.withValues(
-                                          alpha: 0.5,
-                                        ),
+                                      : colorScheme.onSurface.withOpacity(0.5),
                                   size: 28,
                                 ),
                                 const SizedBox(height: 2),
@@ -733,8 +677,8 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   style: TextStyle(
                                     color: _isFanOn
                                         ? colorScheme.onPrimary
-                                        : colorScheme.onSurface.withValues(
-                                            alpha: 0.7,
+                                        : colorScheme.onSurface.withOpacity(
+                                            0.7,
                                           ),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
@@ -749,7 +693,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                       Container(
                         width: 1,
                         height: 40,
-                        color: colorScheme.outline.withValues(alpha: 0.3),
+                        color: colorScheme.outline.withOpacity(0.3),
                         margin: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       // Light Section
@@ -777,9 +721,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   Icons.lightbulb,
                                   color: _isLedOn
                                       ? colorScheme.onPrimary
-                                      : colorScheme.onSurface.withValues(
-                                          alpha: 0.5,
-                                        ),
+                                      : colorScheme.onSurface.withOpacity(0.5),
                                   size: 28,
                                 ),
                                 const SizedBox(height: 2),
@@ -788,8 +730,8 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   style: TextStyle(
                                     color: _isLedOn
                                         ? colorScheme.onPrimary
-                                        : colorScheme.onSurface.withValues(
-                                            alpha: 0.7,
+                                        : colorScheme.onSurface.withOpacity(
+                                            0.7,
                                           ),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
@@ -815,7 +757,7 @@ class _ControllerScreenState extends State<ControllerScreen>
 // Custom widget for rotating fan, used when fan is powered on.
 class _RotatingFan extends StatefulWidget {
   final _FanPainter fanPainter;
-  final double speedLevel; // Accepts the current fan speed (e.g., 0-7)
+  final double speedLevel;
   const _RotatingFan({required this.fanPainter, required this.speedLevel});
 
   @override
@@ -843,7 +785,6 @@ class _RotatingFanState extends State<_RotatingFan>
     super.didUpdateWidget(oldWidget);
     final newDuration = _durationForSpeed(widget.speedLevel);
 
-    // Always update duration
     if (_rotController.duration != newDuration) {
       final value = _rotController.value;
       _rotController.duration = newDuration;
@@ -852,8 +793,6 @@ class _RotatingFanState extends State<_RotatingFan>
         _rotController.value = value;
       }
     }
-
-    // Start/stop animation as needed
     if (widget.speedLevel > 0) {
       if (!_rotController.isAnimating) {
         _rotController.repeat();
@@ -870,9 +809,9 @@ class _RotatingFanState extends State<_RotatingFan>
   }
 
   Duration _durationForSpeed(double speed) {
-    final minDuration = 0.4; // seconds
-    final maxDuration = 2.0; // seconds
-    double t = ((speed.clamp(1, 7)) - 1) / 6; // 0 for 1, 1 for 7
+    final minDuration = 0.4;
+    final maxDuration = 2.0;
+    double t = ((speed.clamp(1, 7)) - 1) / 6;
     double seconds = maxDuration - (maxDuration - minDuration) * t;
     return Duration(milliseconds: (seconds * 1000).toInt());
   }
@@ -889,7 +828,6 @@ class _RotatingFanState extends State<_RotatingFan>
   }
 }
 
-// Fan Painter for the large fan graphic with curved blades.
 class _FanPainter extends CustomPainter {
   final Color color;
   final Color centerColor;
@@ -934,18 +872,13 @@ class _FanPainter extends CustomPainter {
       size.width * 0.13,
       Paint()..color = const Color.fromARGB(255, 238, 235, 59),
     );
-    canvas.drawCircle(
-      center,
-      size.width * 0.09,
-      Paint()..color = centerColor,
-    ); // Use centerColor here
+    canvas.drawCircle(center, size.width * 0.09, Paint()..color = centerColor);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// Timer Button Widget (uses theme colors)
 class _TimerButton extends StatelessWidget {
   final String label;
   final bool selected;
@@ -979,35 +912,6 @@ class _TimerButton extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-      ),
-    );
-  }
-}
-
-// Schedule Time Button Widget (uses theme colors)
-// ignore: unused_element
-class _ScheduleTimeButton extends StatelessWidget {
-  final String label;
-  final ColorScheme colorScheme;
-  final TextTheme textTheme;
-  const _ScheduleTimeButton({
-    required this.label,
-    required this.colorScheme,
-    required this.textTheme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: () {},
-      style: OutlinedButton.styleFrom(
-        side: BorderSide(color: colorScheme.primary),
-        backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Text(
-        label,
-        style: textTheme.bodyMedium?.copyWith(color: colorScheme.primary),
       ),
     );
   }
