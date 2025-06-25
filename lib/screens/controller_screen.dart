@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print, use_build_context_synchronously, constant_identifier_names
+// ignore_for_file: avoid_print, use_build_context_synchronously, constant_identifier_names, unused_field
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
@@ -40,6 +40,8 @@ class _ControllerScreenState extends State<ControllerScreen>
   Timer? _timer;
   int _timerRemaining = 0;
 
+  // ignore: duplicate_ignore
+  // ignore: unused_field
   BluetoothDevice? _device;
   BluetoothCharacteristic? _writeCharacteristic;
   BluetoothConnectionState _connectionState =
@@ -278,7 +280,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                         Text(
                           'Device ID: ${widget.deviceId}',
                           style: textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurface.withOpacity(0.6),
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -304,7 +306,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                       vertical: mediaQuery.size.height * 0.03,
                     ),
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.1),
+                      color: colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(16),
                         bottomRight: Radius.circular(16),
@@ -326,7 +328,9 @@ class _ControllerScreenState extends State<ControllerScreen>
                             Text(
                               'Bluetooth is required to control.',
                               style: textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurface.withOpacity(0.7),
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.7,
+                                ),
                               ),
                             ),
                             SizedBox(height: mediaQuery.size.height * 0.04),
@@ -388,16 +392,16 @@ class _ControllerScreenState extends State<ControllerScreen>
                       height: mediaQuery.size.width * 0.45,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: colorScheme.surfaceContainerHighest.withOpacity(
-                          0.2,
+                        color: colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.2,
                         ),
                         border: Border.all(
-                          color: colorScheme.primary.withOpacity(0.4),
+                          color: colorScheme.primary.withValues(alpha: 0.4),
                           width: 4,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: colorScheme.primary.withOpacity(0.08),
+                            color: colorScheme.primary.withValues(alpha: 0.08),
                             blurRadius: 12,
                             spreadRadius: 2,
                           ),
@@ -415,7 +419,9 @@ class _ControllerScreenState extends State<ControllerScreen>
                               axisLineStyle: AxisLineStyle(
                                 thickness: 0.2,
                                 thicknessUnit: GaugeSizeUnit.factor,
-                                color: colorScheme.primary.withOpacity(0.15),
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.15,
+                                ),
                               ),
                               pointers: <GaugePointer>[
                                 RangePointer(
@@ -524,7 +530,9 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: colorScheme.primary.withOpacity(0.15),
+                                  color: colorScheme.primary.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -644,7 +652,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: colorScheme.primary.withOpacity(0.15),
+                        color: colorScheme.primary.withValues(alpha: 0.15),
                         blurRadius: 8,
                         spreadRadius: 2,
                       ),
@@ -679,7 +687,9 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   Icons.air,
                                   color: _isFanOn
                                       ? colorScheme.onPrimary
-                                      : colorScheme.onSurface.withOpacity(0.5),
+                                      : colorScheme.onSurface.withValues(
+                                          alpha: 0.5,
+                                        ),
                                   size: 28,
                                 ),
                                 const SizedBox(height: 2),
@@ -688,8 +698,8 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   style: TextStyle(
                                     color: _isFanOn
                                         ? colorScheme.onPrimary
-                                        : colorScheme.onSurface.withOpacity(
-                                            0.7,
+                                        : colorScheme.onSurface.withValues(
+                                            alpha: 0.7,
                                           ),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
@@ -704,7 +714,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                       Container(
                         width: 1,
                         height: 40,
-                        color: colorScheme.outline.withOpacity(0.3),
+                        color: colorScheme.outline.withValues(alpha: 0.3),
                         margin: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       // Light Section
@@ -732,7 +742,9 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   Icons.lightbulb,
                                   color: _isLedOn
                                       ? colorScheme.onPrimary
-                                      : colorScheme.onSurface.withOpacity(0.5),
+                                      : colorScheme.onSurface.withValues(
+                                          alpha: 0.5,
+                                        ),
                                   size: 28,
                                 ),
                                 const SizedBox(height: 2),
@@ -741,8 +753,8 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   style: TextStyle(
                                     color: _isLedOn
                                         ? colorScheme.onPrimary
-                                        : colorScheme.onSurface.withOpacity(
-                                            0.7,
+                                        : colorScheme.onSurface.withValues(
+                                            alpha: 0.7,
                                           ),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
