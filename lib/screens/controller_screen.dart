@@ -206,6 +206,16 @@ class _ControllerScreenState extends State<ControllerScreen>
     );
   }
 
+  Future<void> _saveLastFanSpeed(double speed) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('last_fan_speed', speed);
+  }
+
+  Future<double> _getLastFanSpeed() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble('last_fan_speed') ?? 5.0; // Default to 5
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -370,169 +380,189 @@ class _ControllerScreenState extends State<ControllerScreen>
                   // Mode selector
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: ToggleButtons(
-                      borderRadius: BorderRadius.circular(12),
-                      isSelected: List.generate(3, (i) => i == _fanModeIndex),
-                      onPressed: (index) {
-                        setState(() {
-                          _fanModeIndex = index;
-                          if (_fanModeIndex == 1) {
-                            _fanSpeed = 6;
-                          } else if (_fanModeIndex == 2) {
-                            _fanSpeed = 7;
-                          } else if (_fanModeIndex == 0) {
-                            _fanSpeed =
-                                5; // ADD THIS: Set speed to 5 when Normal is selected
-                          }
-                          if (_fanSpeed == 6) {
-                            _fanModeIndex = 1;
-                          } else if (_fanSpeed == 7) {
-                            _fanModeIndex = 2;
-                          }
-                        });
-                        // Send speed command as string hex
-                        if (_fanSpeed == 6) {
-                          BLEHelper.send([0x1A]);
-                        } else if (_fanSpeed == 7) {
-                          BLEHelper.send([0x0C]);
-                        } else if (_fanSpeed == 5) {
-                          // ADD THIS: Send level 5 when Normal is selected
-                          BLEHelper.send([0x02]);
-                        } else {
-                          BLEHelper.send([0x05]);
-                        }
-                      },
-                      selectedColor: colorScheme.onPrimary,
-                      fillColor: colorScheme.primary,
-                      color: colorScheme.onSurface,
-                      children: _fanModes
-                          .map(
-                            (mode) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                              ),
-                              child: Text(mode),
-                            ),
-                          )
-                          .toList(),
+                    child: AbsorbPointer(
+                      absorbing: !_isFanOn,
+                      child: Opacity(
+                        opacity: _isFanOn ? 1.0 : 0.4,
+                        child: ToggleButtons(
+                          borderRadius: BorderRadius.circular(12),
+                          isSelected: List.generate(
+                            3,
+                            (i) => i == _fanModeIndex,
+                          ),
+                          onPressed: (index) {
+                            setState(() {
+                              _fanModeIndex = index;
+                              if (_fanModeIndex == 1) {
+                                _fanSpeed = 6;
+                              } else if (_fanModeIndex == 2) {
+                                _fanSpeed = 7;
+                              } else if (_fanModeIndex == 0) {
+                                _fanSpeed =
+                                    5; // ADD THIS: Set speed to 5 when Normal is selected
+                              }
+                              if (_fanSpeed == 6) {
+                                _fanModeIndex = 1;
+                              } else if (_fanSpeed == 7) {
+                                _fanModeIndex = 2;
+                              }
+                            });
+                            // Send speed command as string hex
+                            if (_fanSpeed == 6) {
+                              BLEHelper.send([0x1A]);
+                            } else if (_fanSpeed == 7) {
+                              BLEHelper.send([0x0C]);
+                            } else if (_fanModeIndex == 0) {
+                              // ADD THIS: Send level 5 when Normal is selected
+                              BLEHelper.send([0x02]);
+                            } else {
+                              BLEHelper.send([0x05]);
+                            }
+                          },
+                          selectedColor: colorScheme.onPrimary,
+                          fillColor: colorScheme.primary,
+                          color: colorScheme.onSurface,
+                          children: _fanModes
+                              .map(
+                                (mode) => Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0,
+                                  ),
+                                  child: Text(mode),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
                     ),
                   ),
                   // Speed Dial
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: Container(
-                      width: mediaQuery.size.width * 0.45,
-                      height: mediaQuery.size.width * 0.45,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: colorScheme.surfaceContainerHighest.withValues(
-                          alpha: 0.2,
-                        ),
-                        border: Border.all(
-                          color: colorScheme.primary.withValues(alpha: 0.4),
-                          width: 4,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorScheme.primary.withValues(alpha: 0.08),
-                            blurRadius: 12,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: SfRadialGauge(
-                          axes: <RadialAxis>[
-                            RadialAxis(
-                              minimum: 1,
-                              maximum: 7,
-                              interval: 1,
-                              showLabels: false,
-                              showTicks: false,
-                              axisLineStyle: AxisLineStyle(
-                                thickness: 0.2,
-                                thicknessUnit: GaugeSizeUnit.factor,
+                    child: AbsorbPointer(
+                      absorbing: !_isFanOn,
+                      child: Opacity(
+                        opacity: _isFanOn ? 1.0 : 0.4,
+                        child: Container(
+                          width: mediaQuery.size.width * 0.45,
+                          height: mediaQuery.size.width * 0.45,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.2),
+                            border: Border.all(
+                              color: colorScheme.primary.withValues(alpha: 0.4),
+                              width: 4,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
                                 color: colorScheme.primary.withValues(
-                                  alpha: 0.15,
+                                  alpha: 0.08,
                                 ),
+                                blurRadius: 12,
+                                spreadRadius: 2,
                               ),
-                              pointers: <GaugePointer>[
-                                RangePointer(
-                                  value: _fanSpeed,
-                                  color: colorScheme.primary,
-                                  width: 0.2,
-                                  sizeUnit: GaugeSizeUnit.factor,
-                                ),
-                                MarkerPointer(
-                                  value: _fanSpeed,
-                                  markerType: MarkerType.circle,
-                                  color: colorScheme.primary,
-                                  markerHeight: 30,
-                                  markerWidth: 30,
-                                  enableDragging: true,
-                                  onValueChanged: (value) {
-                                    final snapped = value
-                                        .round()
-                                        .clamp(1, 7)
-                                        .toDouble();
-                                    setState(() {
-                                      _fanSpeed = snapped;
-                                      if (_fanSpeed == 6) {
-                                        _fanModeIndex = 1;
-                                      } else if (_fanSpeed == 7) {
-                                        _fanModeIndex = 2;
-                                      } else if (_fanSpeed < 6) {
-                                        _fanModeIndex = 0;
-                                      }
-                                    });
-                                  },
-                                  onValueChangeEnd: (value) {
-                                    final snapped = value.round().clamp(1, 7);
-                                    setState(() {
-                                      _fanSpeed = snapped.toDouble();
-                                    });
-                                    // Send speed command as string hex
-                                    switch (snapped) {
-                                      case 1:
-                                        BLEHelper.send([GEAR1]);
-                                        break;
-                                      case 2:
-                                        BLEHelper.send([GEAR2]);
-                                        break;
-                                      case 3:
-                                        BLEHelper.send([GEAR3]);
-                                        break;
-                                      case 4:
-                                        BLEHelper.send([GEAR4]);
-                                        break;
-                                      case 5:
-                                        BLEHelper.send([GEAR5]);
-                                        break;
-                                      case 6:
-                                        BLEHelper.send([GEAR6]);
-                                        break;
-                                      case 7:
-                                        BLEHelper.send([GEAR7]);
-                                        break;
-                                    }
-                                  },
-                                ),
-                              ],
-                              annotations: <GaugeAnnotation>[
-                                GaugeAnnotation(
-                                  widget: Text(
-                                    '${_fanSpeed.toInt()}',
-                                    style: textTheme.displaySmall?.copyWith(
-                                      color: colorScheme.onSurface,
-                                      fontWeight: FontWeight.bold,
+                            ],
+                          ),
+                          child: Center(
+                            child: SfRadialGauge(
+                              axes: <RadialAxis>[
+                                RadialAxis(
+                                  minimum: 1,
+                                  maximum: 7,
+                                  interval: 1,
+                                  showLabels: false,
+                                  showTicks: false,
+                                  axisLineStyle: AxisLineStyle(
+                                    thickness: 0.2,
+                                    thicknessUnit: GaugeSizeUnit.factor,
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.15,
                                     ),
                                   ),
-                                  positionFactor: 0.1,
-                                  angle: 90,
+                                  pointers: <GaugePointer>[
+                                    RangePointer(
+                                      value: _fanSpeed,
+                                      color: colorScheme.primary,
+                                      width: 0.2,
+                                      sizeUnit: GaugeSizeUnit.factor,
+                                    ),
+                                    MarkerPointer(
+                                      value: _fanSpeed,
+                                      markerType: MarkerType.circle,
+                                      color: colorScheme.primary,
+                                      markerHeight: 30,
+                                      markerWidth: 30,
+                                      enableDragging: true,
+                                      onValueChanged: (value) {
+                                        final snapped = value
+                                            .round()
+                                            .clamp(1, 7)
+                                            .toDouble();
+                                        setState(() {
+                                          _fanSpeed = snapped;
+                                          if (_fanSpeed == 6) {
+                                            _fanModeIndex = 1;
+                                          } else if (_fanSpeed == 7) {
+                                            _fanModeIndex = 2;
+                                          } else if (_fanSpeed < 6) {
+                                            _fanModeIndex = 0;
+                                          }
+                                        });
+                                      },
+                                      onValueChangeEnd: (value) {
+                                        final snapped = value.round().clamp(
+                                          1,
+                                          7,
+                                        );
+                                        setState(() {
+                                          _fanSpeed = snapped.toDouble();
+                                        });
+                                        _saveLastFanSpeed(_fanSpeed);
+                                        // Send speed command as string hex
+                                        switch (snapped) {
+                                          case 1:
+                                            BLEHelper.send([GEAR1]);
+                                            break;
+                                          case 2:
+                                            BLEHelper.send([GEAR2]);
+                                            break;
+                                          case 3:
+                                            BLEHelper.send([GEAR3]);
+                                            break;
+                                          case 4:
+                                            BLEHelper.send([GEAR4]);
+                                            break;
+                                          case 5:
+                                            BLEHelper.send([GEAR5]);
+                                            break;
+                                          case 6:
+                                            BLEHelper.send([GEAR6]);
+                                            break;
+                                          case 7:
+                                            BLEHelper.send([GEAR7]);
+                                            break;
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                  annotations: <GaugeAnnotation>[
+                                    GaugeAnnotation(
+                                      widget: Text(
+                                        '${_fanSpeed.toInt()}',
+                                        style: textTheme.displaySmall?.copyWith(
+                                          color: colorScheme.onSurface,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      positionFactor: 0.1,
+                                      angle: 90,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -543,114 +573,120 @@ class _ControllerScreenState extends State<ControllerScreen>
                       horizontal: 24.0,
                       vertical: 8,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                    child: AbsorbPointer(
+                      absorbing: !_isFanOn,
+                      child: Opacity(
+                        opacity: _isFanOn ? 1.0 : 0.4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Timer',
-                              style: textTheme.titleMedium?.copyWith(
-                                color: colorScheme.onSurface,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            if (_timerValue > 0 && _timerRemaining > 0)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: colorScheme.primary.withValues(
-                                    alpha: 0.15,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  _formatTimer(_timerRemaining),
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    color: colorScheme.primary,
+                            Row(
+                              children: [
+                                Text(
+                                  'Timer',
+                                  style: textTheme.titleMedium?.copyWith(
+                                    color: colorScheme.onSurface,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                                const SizedBox(width: 12),
+                                if (_timerValue > 0 && _timerRemaining > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      _formatTimer(_timerRemaining),
+                                      style: textTheme.bodyMedium?.copyWith(
+                                        color: colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                if (_timerValue > 0)
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.clear,
+                                      color: colorScheme.error,
+                                    ),
+                                    tooltip: 'Clear Timer',
+                                    onPressed: _clearTimer,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _TimerButton(
+                                    label: '5m',
+                                    selected: _timerValue == 5,
+                                    onTap: () => _startTimer(5, 0x1F),
+                                    colorScheme: colorScheme,
+                                    textTheme: textTheme,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _TimerButton(
+                                    label: '30m',
+                                    selected: _timerValue == 30,
+                                    onTap: () => _startTimer(30, 0xDD),
+                                    colorScheme: colorScheme,
+                                    textTheme: textTheme,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _TimerButton(
+                                    label: '1h',
+                                    selected: _timerValue == 60,
+                                    onTap: () => _startTimer(60, 0x10),
+                                    colorScheme: colorScheme,
+                                    textTheme: textTheme,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _TimerButton(
+                                    label: '2h',
+                                    selected: _timerValue == 120,
+                                    onTap: () => _startTimer(120, 0x0D),
+                                    colorScheme: colorScheme,
+                                    textTheme: textTheme,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _TimerButton(
+                                    label: '4h',
+                                    selected: _timerValue == 240,
+                                    onTap: () => _startTimer(240, 0x01),
+                                    colorScheme: colorScheme,
+                                    textTheme: textTheme,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _TimerButton(
+                                    label: '6h',
+                                    selected: _timerValue == 360,
+                                    onTap: () => _startTimer(360, 0x09),
+                                    colorScheme: colorScheme,
+                                    textTheme: textTheme,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _TimerButton(
+                                    label: '8h',
+                                    selected: _timerValue == 480,
+                                    onTap: () => _startTimer(480, 0x07),
+                                    colorScheme: colorScheme,
+                                    textTheme: textTheme,
+                                  ),
+                                ],
                               ),
-                            if (_timerValue > 0)
-                              IconButton(
-                                icon: Icon(
-                                  Icons.clear,
-                                  color: colorScheme.error,
-                                ),
-                                tooltip: 'Clear Timer',
-                                onPressed: _clearTimer,
-                              ),
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              _TimerButton(
-                                label: '5m',
-                                selected: _timerValue == 5,
-                                onTap: () => _startTimer(5, 0x1F),
-                                colorScheme: colorScheme,
-                                textTheme: textTheme,
-                              ),
-                              const SizedBox(width: 8),
-                              _TimerButton(
-                                label: '30m',
-                                selected: _timerValue == 30,
-                                onTap: () => _startTimer(30, 0xDD),
-                                colorScheme: colorScheme,
-                                textTheme: textTheme,
-                              ),
-                              const SizedBox(width: 8),
-                              _TimerButton(
-                                label: '1h',
-                                selected: _timerValue == 60,
-                                onTap: () => _startTimer(60, 0x10),
-                                colorScheme: colorScheme,
-                                textTheme: textTheme,
-                              ),
-                              const SizedBox(width: 8),
-                              _TimerButton(
-                                label: '2h',
-                                selected: _timerValue == 120,
-                                onTap: () => _startTimer(120, 0x0D),
-                                colorScheme: colorScheme,
-                                textTheme: textTheme,
-                              ),
-                              const SizedBox(width: 8),
-                              _TimerButton(
-                                label: '4h',
-                                selected: _timerValue == 240,
-                                onTap: () => _startTimer(240, 0x01),
-                                colorScheme: colorScheme,
-                                textTheme: textTheme,
-                              ),
-                              const SizedBox(width: 8),
-                              _TimerButton(
-                                label: '6h',
-                                selected: _timerValue == 360,
-                                onTap: () => _startTimer(360, 0x09),
-                                colorScheme: colorScheme,
-                                textTheme: textTheme,
-                              ),
-                              const SizedBox(width: 8),
-                              _TimerButton(
-                                label: '8h',
-                                selected: _timerValue == 480,
-                                onTap: () => _startTimer(480, 0x07),
-                                colorScheme: colorScheme,
-                                textTheme: textTheme,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
@@ -685,6 +721,12 @@ class _ControllerScreenState extends State<ControllerScreen>
                             setState(() {
                               _isFanOn = newState;
                             });
+                            if (newState) {
+                              final lastSpeed = await _getLastFanSpeed();
+                              setState(() {
+                                _fanSpeed = lastSpeed;
+                              });
+                            }
                             BLEHelper.send([newState ? FANON : FANOFF]);
                           },
                           child: Container(
