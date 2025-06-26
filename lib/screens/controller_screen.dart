@@ -283,6 +283,33 @@ class _ControllerScreenState extends State<ControllerScreen>
                             color: colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
+                        if (_connectionState ==
+                            BluetoothConnectionState.connected) ...[
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.link_off),
+                            label: const Text('Disconnect'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorScheme.error,
+                              foregroundColor: colorScheme.onError,
+                            ),
+                            onPressed: () async {
+                              try {
+                                await _device?.disconnect();
+                              } catch (e) {
+                                print('Error disconnecting: $e');
+                              }
+                              if (context.mounted) {
+                                Navigator.pop(
+                                  context,
+                                ); // Close the bottom sheet
+                                Navigator.pop(
+                                  context,
+                                ); // Pop the ControllerScreen
+                              }
+                            },
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -353,6 +380,9 @@ class _ControllerScreenState extends State<ControllerScreen>
                             _fanSpeed = 6;
                           } else if (_fanModeIndex == 2) {
                             _fanSpeed = 7;
+                          } else if (_fanModeIndex == 0) {
+                            _fanSpeed =
+                                5; // ADD THIS: Set speed to 5 when Normal is selected
                           }
                           if (_fanSpeed == 6) {
                             _fanModeIndex = 1;
@@ -365,6 +395,9 @@ class _ControllerScreenState extends State<ControllerScreen>
                           BLEHelper.send([0x1A]);
                         } else if (_fanSpeed == 7) {
                           BLEHelper.send([0x0C]);
+                        } else if (_fanSpeed == 5) {
+                          // ADD THIS: Send level 5 when Normal is selected
+                          BLEHelper.send([0x02]);
                         } else {
                           BLEHelper.send([0x05]);
                         }
@@ -523,7 +556,7 @@ class _ControllerScreenState extends State<ControllerScreen>
                               ),
                             ),
                             const SizedBox(width: 12),
-                            if (_timerValue > 0)
+                            if (_timerValue > 0 && _timerRemaining > 0)
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -535,28 +568,12 @@ class _ControllerScreenState extends State<ControllerScreen>
                                   ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      _timerValue < 60
-                                          ? '$_timerValue min'
-                                          : '${(_timerValue / 60).toStringAsFixed(_timerValue % 60 == 0 ? 0 : 1)} hr',
-                                      style: textTheme.bodyMedium?.copyWith(
-                                        color: colorScheme.primary,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    if (_timerRemaining > 0) ...[
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        _formatTimer(_timerRemaining),
-                                        style: textTheme.bodyMedium?.copyWith(
-                                          color: colorScheme.primary,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
+                                child: Text(
+                                  _formatTimer(_timerRemaining),
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             if (_timerValue > 0)

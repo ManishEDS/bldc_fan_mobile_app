@@ -19,14 +19,8 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
   List<ScanResult> scanResults = [];
   bool isScanning = false;
   final Map<String, String> deviceRooms = {};
-  List<String> predefinedRooms = [
-    'Default',
-    'Living Room',
-    'Bedroom',
-    'Kitchen',
-    'Bathroom',
-    'Office',
-  ];
+  int _searchTapCount = 0; // Add this line
+  bool _showAllDevices = false; // Add this line
   late SharedPreferences _prefs;
 
   @override
@@ -200,57 +194,38 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
   }
 
   Future<void> _showRoomAssignmentDialog(BluetoothDevice device) async {
-    String? selectedRoom = deviceRooms[device.remoteId.toString()] ?? 'Default';
+    String selectedRoom = '';
     final TextEditingController roomController = TextEditingController();
 
     await showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('Assign ${device.platformName} to Room'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: selectedRoom,
-                    items: predefinedRooms.map((room) {
-                      return DropdownMenuItem(value: room, child: Text(room));
-                    }).toList(),
-                    onChanged: (value) => setState(() => selectedRoom = value),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: roomController,
-                    decoration: const InputDecoration(
-                      labelText: 'Or enter new room name',
-                    ),
-                    onChanged: (value) => selectedRoom = value,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    if (selectedRoom != null && selectedRoom!.isNotEmpty) {
-                      await _saveDeviceRoom(
-                        device.remoteId.toString(),
-                        selectedRoom!,
-                      );
-                      // ignore: use_build_context_synchronously
-                      if (mounted) Navigator.pop(context);
-                    }
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
-            );
-          },
+        return AlertDialog(
+          title: Text('Assign ${device.platformName} to Room'),
+          content: TextField(
+            controller: roomController,
+            decoration: const InputDecoration(
+              labelText: 'Enter room name',
+              hintText: 'e.g. Living Room',
+            ),
+            onChanged: (value) => selectedRoom = value,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final roomToSave = (selectedRoom.trim().isEmpty)
+                    ? 'Default'
+                    : selectedRoom.trim();
+                await _saveDeviceRoom(device.remoteId.toString(), roomToSave);
+                if (mounted) Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
         );
       },
     );
@@ -260,12 +235,23 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Filter scanResults based on _showAllDevices
+    final filteredResults = _showAllDevices
+        ? scanResults
+        : scanResults
+              .where(
+                (result) => result.device.platformName.toUpperCase().startsWith(
+                  'VENTUM',
+                ),
+              )
+              .toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Searching for Fans'),
         backgroundColor: theme.colorScheme.primary,
       ),
-      body: scanResults.isEmpty
+      body: filteredResults.isEmpty
           ? Center(
               child: isScanning
                   ? Column(
@@ -286,9 +272,9 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
                     ),
             )
           : ListView.builder(
-              itemCount: scanResults.length,
+              itemCount: filteredResults.length,
               itemBuilder: (context, index) {
-                final result = scanResults[index];
+                final result = filteredResults[index];
                 final deviceName = result.device.platformName.isEmpty
                     ? 'Unknown Device'
                     : result.device.platformName;
@@ -357,7 +343,17 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
               },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: isScanning ? null : _startScan,
+        onPressed: isScanning
+            ? null
+            : () {
+                _searchTapCount++;
+                if (_searchTapCount >= 10) {
+                  setState(() {
+                    _showAllDevices = true;
+                  });
+                }
+                _startScan();
+              },
         backgroundColor: theme.colorScheme.secondary,
         child: const Icon(Icons.search, color: Colors.white),
       ),
