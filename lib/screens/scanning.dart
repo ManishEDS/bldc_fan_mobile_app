@@ -20,7 +20,7 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
   bool isScanning = false;
   final Map<String, String> deviceRooms = {};
   int _searchTapCount = 0; // Add this line
-  bool _showAllDevices = false; // Add this line
+  bool _showAllDevices = true; // Add this line
   late SharedPreferences _prefs;
 
   @override
@@ -245,6 +245,9 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
                 ),
               )
               .toList();
+
+    // Show all devices for testing
+    // final filteredResults = scanResults;
 
     return Scaffold(
       appBar: AppBar(
