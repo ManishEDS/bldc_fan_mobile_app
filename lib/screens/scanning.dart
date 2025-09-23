@@ -235,19 +235,8 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Filter scanResults based on _showAllDevices
-    final filteredResults = _showAllDevices
-        ? scanResults
-        : scanResults
-              .where(
-                (result) => result.device.platformName.toUpperCase().startsWith(
-                  'VENTUM',
-                ),
-              )
-              .toList();
-
     // Show all devices for testing
-    // final filteredResults = scanResults;
+    final filteredResults = scanResults;
 
     return Scaffold(
       appBar: AppBar(

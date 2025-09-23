@@ -40,11 +40,15 @@ dependencies:
   syncfusion_flutter_gauges: ^29.2.7+1
   rename_app: ^1.6.3
   flutter_launcher_icons: ^0.14.3
+  flutter_circle_color_picker: ^0.3.0
+  camera: ^0.11.2
+
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  flutter_lints: ^6.0.0
+  
 flutter_icons:
   android: true
   ios: true
