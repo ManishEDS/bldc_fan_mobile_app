@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:location/location.dart'; // Add this import at the top
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BLEScanScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
   bool isScanning = false;
   final Map<String, String> deviceRooms = {};
   int _searchTapCount = 0; // Add this line
-  bool _showAllDevices = true; // Add this line
+  // Add this line
   late SharedPreferences _prefs;
 
   @override
@@ -100,18 +101,38 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
 
   void _startScan() async {
     if (Platform.isAndroid) {
+      // Check location permission
       if (await Permission.bluetoothScan.isDenied ||
           await Permission.bluetoothConnect.isDenied ||
           await Permission.locationWhenInUse.isDenied) {
         await _requestPermissions();
-        // Optionally, show a message if still denied
         if (await Permission.bluetoothScan.isDenied) {
-          // ignore: use_build_context_synchronously
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Bluetooth scan permission required!'),
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Bluetooth scan permission required!'),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      // Check if location is enabled (Android only)
+      Location location = Location();
+      bool serviceEnabled = await location.serviceEnabled();
+      if (!serviceEnabled) {
+        serviceEnabled = await location.requestService();
+        if (!serviceEnabled) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Location service is required for BLE scanning. Please enable location.',
+                ),
+              ),
+            );
+          }
           return;
         }
       }
@@ -221,6 +242,7 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
                     ? 'Default'
                     : selectedRoom.trim();
                 await _saveDeviceRoom(device.remoteId.toString(), roomToSave);
+                // ignore: use_build_context_synchronously
                 if (mounted) Navigator.pop(context);
               },
               child: const Text('Save'),
@@ -340,9 +362,7 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
             : () {
                 _searchTapCount++;
                 if (_searchTapCount >= 10) {
-                  setState(() {
-                    _showAllDevices = true;
-                  });
+                  setState(() {});
                 }
                 _startScan();
               },

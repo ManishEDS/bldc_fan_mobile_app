@@ -42,6 +42,8 @@ dependencies:
   flutter_launcher_icons: ^0.14.3
   flutter_circle_color_picker: ^0.3.0
   camera: ^0.11.2
+  image: ^4.5.4
+  location: ^8.0.1
 
 
 dev_dependencies:

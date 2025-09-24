@@ -7,8 +7,9 @@ class BLEHelper {
   /// Set the writable characteristic after discovery
   static void setWriteCharacteristic(BluetoothCharacteristic characteristic) {
     writeCharacteristic = characteristic;
-    if (kDebugMode)
+    if (kDebugMode) {
       print('Writable characteristic set: ${characteristic.uuid}');
+    }
   }
 
   /// Send a single-byte command (e.g. [0x0E]) to the device
@@ -21,8 +22,9 @@ class BLEHelper {
       await writeCharacteristic!.write(data);
       if (kDebugMode) print('Sent BLE data: $data');
     } catch (e) {
-      if (kDebugMode)
+      if (kDebugMode) {
         print('Write with response failed: $e. Trying without response...');
+      }
       try {
         await writeCharacteristic!.write(data, withoutResponse: true);
         if (kDebugMode) print('Sent BLE data (no response): $data');

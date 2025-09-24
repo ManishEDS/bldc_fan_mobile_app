@@ -92,7 +92,10 @@ class BLEUtility {
       for (var d in devs) {
         if (d.remoteId.toString() == deviceId) d.disconnect();
       }
-    } catch (e) {}
+    } catch (e) {
+      // ignore: avoid_print
+      print(e);
+    }
   }
 
   // Method to attempt reconnection every second for 2 minutes
@@ -174,15 +177,17 @@ class BLEUtility {
           await targetCharacteristic.write(messageBytes);
           if (kDebugMode) print('Sent message on Android: $messageBytes');
         } catch (e) {
-          if (kDebugMode)
+          if (kDebugMode) {
             print('Write with response failed: $e. Trying without response...');
+          }
           try {
             await targetCharacteristic.write(
               messageBytes,
               withoutResponse: true,
             );
-            if (kDebugMode)
+            if (kDebugMode) {
               print('Sent message on Android (no response): $messageBytes');
+            }
           } catch (e2) {
             if (kDebugMode) print('Write without response also failed: $e2');
           }
@@ -260,7 +265,9 @@ class BLEUtility {
 
     // Automatically dismiss the dialog after 2 seconds
     await Future.delayed(const Duration(seconds: 2));
+    // ignore: use_build_context_synchronously
     if (Navigator.canPop(context)) {
+      // ignore: use_build_context_synchronously
       Navigator.pop(context);
     }
   }
