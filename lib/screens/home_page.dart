@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'controller_screen.dart';
+import 'controllers/controller_screen.dart';
 import 'scanning.dart';
 
 class MyHomePage extends StatefulWidget {
