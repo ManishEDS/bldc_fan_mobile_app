@@ -9,11 +9,13 @@ import '../ble.dart';
 class FanControlScreen extends StatefulWidget {
   final Function(bool) onFanStateChanged;
   final BoxConstraints constraints;
+  final bool isDeviceOn;
 
   const FanControlScreen({
     super.key,
     required this.onFanStateChanged,
     required this.constraints,
+    required this.isDeviceOn,
   });
 
   @override
@@ -23,11 +25,10 @@ class FanControlScreen extends StatefulWidget {
 class _FanControlScreenState extends State<FanControlScreen> {
   double _fanSpeed = 0.0;
   int _timerValue = 0;
-  bool _isFanOn = false;
   Timer? _timer;
   int _timerRemaining = 0;
 
-  // BLE command codes for fan
+  // BLE command codes
   static const int FANON = 0x0E;
   static const int FANOFF = 0x06;
   static const int GEAR1 = 0x05;
@@ -46,9 +47,19 @@ class _FanControlScreenState extends State<FanControlScreen> {
   static const int R8H = 0x07;
 
   @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadLastFanSpeed();
+  }
+
+  @override
+  void didUpdateWidget(covariant FanControlScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isDeviceOn && !oldWidget.isDeviceOn) {
+      _sendFanSpeed(); // Send last speed when device turns on
+    } else if (!widget.isDeviceOn && oldWidget.isDeviceOn) {
+      _clearTimer(); // Clear timer when device turns off
+    }
   }
 
   void _startTimer(int minutes, int code) {
@@ -58,7 +69,11 @@ class _FanControlScreenState extends State<FanControlScreen> {
       _timerRemaining = minutes * 60;
     });
     if (minutes > 0) {
-      BLEHelper.send([code]);
+      try {
+        BLEHelper.send([code]);
+      } catch (e) {
+        print('BLE send error (timer): $e');
+      }
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (_timerRemaining > 0) {
           setState(() {
@@ -69,10 +84,8 @@ class _FanControlScreenState extends State<FanControlScreen> {
           setState(() {
             _timerValue = 0;
             _timerRemaining = 0;
-            _isFanOn = false;
           });
           widget.onFanStateChanged(false);
-          BLEHelper.send([FANOFF]);
         }
       });
     }
@@ -102,7 +115,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
         color: colorScheme.onSurface,
         centerColor: colorScheme.surfaceContainerHighest,
       ),
-      speedLevel: _isFanOn ? _fanSpeed : 0,
+      speedLevel: widget.isDeviceOn ? _fanSpeed : 0,
     );
   }
 
@@ -111,24 +124,18 @@ class _FanControlScreenState extends State<FanControlScreen> {
     await prefs.setDouble('last_fan_speed', speed);
   }
 
-  Future<double> _getLastFanSpeed() async {
+  Future<void> _loadLastFanSpeed() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getDouble('last_fan_speed') ?? 5.0;
+    final lastSpeed = prefs.getDouble('last_fan_speed') ?? 5.0;
+    setState(() {
+      _fanSpeed = lastSpeed.clamp(1.0, 5.0);
+    });
   }
 
-  void _handlePowerButtonPress() async {
-    final newState = !_isFanOn;
-    setState(() {
-      _isFanOn = newState;
-    });
-    widget.onFanStateChanged(newState);
-    if (newState) {
-      final lastSpeed = await _getLastFanSpeed();
-      setState(() {
-        _fanSpeed = lastSpeed.clamp(1.0, 5.0); // Limit to 1-5
-      });
-      BLEHelper.send([FANON]);
-      switch (_fanSpeed.round()) {
+  void _sendFanSpeed() {
+    final snapped = _fanSpeed.round().clamp(1, 5);
+    try {
+      switch (snapped) {
         case 1:
           BLEHelper.send([GEAR1]);
           break;
@@ -145,9 +152,8 @@ class _FanControlScreenState extends State<FanControlScreen> {
           BLEHelper.send([GEAR5]);
           break;
       }
-    } else {
-      BLEHelper.send([FANOFF]);
-      _clearTimer();
+    } catch (e) {
+      print('BLE send error (speed): $e');
     }
   }
 
@@ -168,98 +174,56 @@ class _FanControlScreenState extends State<FanControlScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(
-                      vertical: availableHeight * 0.03,
-                      horizontal: availableWidth * 0.04,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          colorScheme.primary.withOpacity(0.1),
-                          colorScheme.primaryContainer.withOpacity(0.1),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: IgnorePointer(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(height: availableHeight * 0.02),
-                          Center(
-                            child: FractionallySizedBox(
-                              widthFactor: isLandscape ? 0.18 : 0.34,
-                              child: AspectRatio(
-                                aspectRatio: 1,
-                                child: _buildFanGraphic(colorScheme),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: availableHeight * 0.02),
-                          Text(
-                            'Bluetooth is required to control.',
-                            style: textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurface.withOpacity(0.7),
-                              fontSize: mediaQuery.textScaleFactor * 10,
-                            ),
-                          ),
-                          SizedBox(height: availableHeight * 0.04),
-                        ],
-                      ),
-                    ),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                  vertical: availableHeight * 0.03,
+                  horizontal: availableWidth * 0.04,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colorScheme.primary.withOpacity(0.1),
+                      colorScheme.primaryContainer.withOpacity(0.1),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  Positioned(
-                    bottom: -availableWidth * 0.09,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _handlePowerButtonPress,
-                      child: Container(
-                        width: availableWidth * 0.20,
-                        height: availableWidth * 0.20,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.transparent,
-                        ),
-                        child: Center(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              shape: const CircleBorder(),
-                              padding: EdgeInsets.all(availableWidth * 0.04),
-                              backgroundColor: _isFanOn
-                                  ? Colors.green
-                                  : colorScheme.onSurface.withOpacity(0.15),
-                              elevation: 8,
-                              shadowColor: Colors.black45,
-                            ),
-                            onPressed: _handlePowerButtonPress,
-                            child: Icon(
-                              Icons.power_settings_new,
-                              color: _isFanOn
-                                  ? Colors.white
-                                  : colorScheme.onSurface.withOpacity(0.5),
-                              size: availableWidth * 0.09,
-                            ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: IgnorePointer(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(height: availableHeight * 0.02),
+                      Center(
+                        child: FractionallySizedBox(
+                          widthFactor: isLandscape ? 0.18 : 0.34,
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: _buildFanGraphic(colorScheme),
                           ),
                         ),
                       ),
-                    ),
+                      SizedBox(height: availableHeight * 0.02),
+                      Text(
+                        'Bluetooth is required to control.',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.7),
+                          fontSize: mediaQuery.textScaleFactor * 10,
+                        ),
+                      ),
+                      SizedBox(height: availableHeight * 0.04),
+                    ],
                   ),
-                ],
+                ),
               ),
               SizedBox(height: availableHeight * 0.07),
               AbsorbPointer(
-                absorbing: !_isFanOn,
+                absorbing: !widget.isDeviceOn,
                 child: Opacity(
-                  opacity: _isFanOn ? 1.0 : 0.4,
+                  opacity: widget.isDeviceOn ? 1.0 : 0.4,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -341,23 +305,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                             _fanSpeed = snapped.toDouble();
                                           });
                                           _saveLastFanSpeed(_fanSpeed);
-                                          switch (snapped) {
-                                            case 1:
-                                              BLEHelper.send([GEAR1]);
-                                              break;
-                                            case 2:
-                                              BLEHelper.send([GEAR2]);
-                                              break;
-                                            case 3:
-                                              BLEHelper.send([GEAR3]);
-                                              break;
-                                            case 4:
-                                              BLEHelper.send([GEAR4]);
-                                              break;
-                                            case 5:
-                                              BLEHelper.send([GEAR5]);
-                                              break;
-                                          }
+                                          _sendFanSpeed();
                                         },
                                       ),
                                     ],
@@ -403,7 +351,11 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                     _fanSpeed = 6.0;
                                   });
                                   _saveLastFanSpeed(_fanSpeed);
-                                  BLEHelper.send([GEAR6]);
+                                  try {
+                                    BLEHelper.send([GEAR6]);
+                                  } catch (e) {
+                                    print('BLE send error (speed): $e');
+                                  }
                                 },
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
@@ -421,7 +373,11 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                     _fanSpeed = 7.0;
                                   });
                                   _saveLastFanSpeed(_fanSpeed);
-                                  BLEHelper.send([GEAR7]);
+                                  try {
+                                    BLEHelper.send([GEAR7]);
+                                  } catch (e) {
+                                    print('BLE send error (speed): $e');
+                                  }
                                 },
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
@@ -800,7 +756,7 @@ class _SpeedBoostButton extends StatelessWidget {
       child: Container(
         height: height,
         padding: EdgeInsets.symmetric(
-          horizontal: height * 0.4, // Adjusted for responsive internal padding
+          horizontal: height * 0.4,
           vertical: height * 0.2,
         ),
         decoration: BoxDecoration(

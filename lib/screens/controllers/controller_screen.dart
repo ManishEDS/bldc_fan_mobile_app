@@ -36,6 +36,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
       BluetoothConnectionState.disconnected;
   bool _isFanOn = false;
   bool _isLedOn = false;
+  bool _isDeviceOn = false;
   int _currentIndex = 0;
 
   void _updateFanState(bool isOn) {
@@ -48,6 +49,32 @@ class _ControllerScreenState extends State<ControllerScreen> {
     setState(() {
       _isLedOn = isOn;
     });
+  }
+
+  void _toggleDevicePower() async {
+    setState(() {
+      _isDeviceOn = !_isDeviceOn;
+      _isFanOn = _isDeviceOn;
+      _isLedOn = _isDeviceOn;
+    });
+    _updateFanState(_isDeviceOn);
+    _updateLightState(_isDeviceOn);
+    try {
+      if (_isDeviceOn) {
+        // Fan ON
+        await BLEHelper.send([0x0E]); // FANON
+        // Light ON (default: yellowAccent RGB(255,235,59), 6500K)
+        await BLEHelper.send([0xD5, 255, 235, 59, 0x5D]);
+        await BLEHelper.send([0xD6, (6500 >> 8) & 0xFF, 6500 & 0xFF, 0x5D]);
+      } else {
+        // Fan OFF
+        await BLEHelper.send([0x06]); // FANOFF
+        // Light OFF
+        await BLEHelper.send([0xD5, 0, 0, 0, 0x5D]);
+      }
+    } catch (e) {
+      print('BLE send error: $e');
+    }
   }
 
   @override
@@ -156,24 +183,18 @@ class _ControllerScreenState extends State<ControllerScreen> {
               padding: EdgeInsets.symmetric(
                 horizontal: mediaQuery.size.width * 0.02,
               ),
-              child: Icon(
-                _isFanOn ? Icons.air : Icons.air_outlined,
-                color: _isFanOn ? Colors.green : colorScheme.onSurface,
-                size: isLandscape
-                    ? mediaQuery.size.width * 0.05
-                    : mediaQuery.size.width * 0.07,
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: mediaQuery.size.width * 0.02,
-              ),
-              child: Icon(
-                _isLedOn ? Icons.lightbulb : Icons.lightbulb_outline,
-                color: _isLedOn ? Colors.yellow : colorScheme.onSurface,
-                size: isLandscape
-                    ? mediaQuery.size.width * 0.05
-                    : mediaQuery.size.width * 0.07,
+              child: IconButton(
+                icon: Icon(
+                  Icons.power_settings_new,
+                  color: _isDeviceOn
+                      ? Colors.green
+                      : colorScheme.onSurface.withOpacity(0.5),
+                  size: isLandscape
+                      ? mediaQuery.size.width * 0.05
+                      : mediaQuery.size.width * 0.07,
+                ),
+                onPressed: _toggleDevicePower,
+                tooltip: _isDeviceOn ? 'Turn Device Off' : 'Turn Device On',
               ),
             ),
             Padding(
@@ -301,10 +322,12 @@ class _ControllerScreenState extends State<ControllerScreen> {
                 FanControlScreen(
                   onFanStateChanged: _updateFanState,
                   constraints: constraints,
+                  isDeviceOn: _isDeviceOn,
                 ),
                 LightControlScreen(
                   onLightStateChanged: _updateLightState,
                   constraints: constraints,
+                  isDeviceOn: _isDeviceOn,
                 ),
               ],
             );

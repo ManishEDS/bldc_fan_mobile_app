@@ -257,8 +257,11 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Show all devices for testing
-    final filteredResults = scanResults;
+    // Filter devices whose name contains 'simpex' or 'ventum' (case-insensitive)
+    final filteredResults = scanResults.where((result) {
+      final name = result.device.platformName.toLowerCase();
+      return name.contains('ventum') || name.contains('simpex');
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -345,8 +348,8 @@ class _BLEScanScreenState extends State<BLEScanScreen> {
                           child: const Text(
                             'Connect',
                             style: TextStyle(
-                              color: Colors.white, // Set text color to white
-                              fontWeight: FontWeight.bold, // Make text bold
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),

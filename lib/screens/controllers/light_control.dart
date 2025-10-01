@@ -7,11 +7,13 @@ import '../ble.dart';
 class LightControlScreen extends StatefulWidget {
   final Function(bool) onLightStateChanged;
   final BoxConstraints constraints;
+  final bool isDeviceOn;
 
   const LightControlScreen({
     super.key,
     required this.onLightStateChanged,
     required this.constraints,
+    required this.isDeviceOn,
   });
 
   @override
@@ -19,22 +21,26 @@ class LightControlScreen extends StatefulWidget {
 }
 
 class _LightControlScreenState extends State<LightControlScreen> {
-  bool _isLedOn = false;
+  final bool _isLedOn = false;
   Color _lightColor = Colors.yellowAccent;
   double _lightCct = 6500.0;
   Timer? _debounceTimer;
   double _red = 255;
   double _green = 235;
   double _blue = 59;
-  double _stripPosition = 0.0; // Track the normalized position (0.0 to 1.0)
+  double _stripPosition = 0.0;
 
   void _sendLightColor(Color color) {
     List<int> colorBytes = [color.red, color.green, color.blue];
     final packet = <int>[0xD5, ...colorBytes, 0x5D];
-    BLEHelper.send(packet);
-    print(
-      'Sent color: R=${color.red}, G=${color.green}, B=${color.blue} (Hex: ${packet.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')})',
-    );
+    try {
+      BLEHelper.send(packet);
+      print(
+        'Sent color: R=${color.red}, G=${color.green}, B=${color.blue} (Hex: ${packet.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')})',
+      );
+    } catch (e) {
+      print('BLE send error (color): $e');
+    }
   }
 
   void _sendLightCct() {
@@ -42,10 +48,14 @@ class _LightControlScreenState extends State<LightControlScreen> {
     final highByte = (cct >> 8) & 0xFF;
     final lowByte = cct & 0xFF;
     final packet = <int>[0xD6, highByte, lowByte, 0x5D];
-    BLEHelper.send(packet);
-    print(
-      'Sent CCT: ${cct}K (Hex: ${packet.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')})',
-    );
+    try {
+      BLEHelper.send(packet);
+      print(
+        'Sent CCT: ${cct}K (Hex: ${packet.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')})',
+      );
+    } catch (e) {
+      print('BLE send error (CCT): $e');
+    }
   }
 
   Widget _buildCctSlider(BuildContext context) {
@@ -491,7 +501,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
   }
 
   Widget _buildBulbIcon(double size) {
-    if (!_isLedOn) {
+    if (!widget.isDeviceOn) {
       return Icon(
         Icons.lightbulb,
         color: Colors.grey.withValues(alpha: 0.5),
@@ -499,22 +509,19 @@ class _LightControlScreenState extends State<LightControlScreen> {
       );
     }
 
-    // Check if _lightColor is close to a white-like color (e.g., yellowAccent or near-white)
     final isWhiteLike =
         (_red >= 200 && _green >= 200 && _blue >= 150) ||
         _lightColor == Colors.yellowAccent;
 
     if (isWhiteLike) {
-      // Interpolate between warm white (2500K) and cool white (6500K)
-      const warmWhite = Color(0xFFFFD700); // Warm white (~2500K)
-      const coolWhite = Color(0xFFE6F0FA); // Cool white (~6500K)
-      final t = (_lightCct - 2500) / (6500 - 2500); // Normalize CCT to [0, 1]
+      const warmWhite = Color(0xFFFFD700);
+      const coolWhite = Color(0xFFE6F0FA);
+      final t = (_lightCct - 2500) / (6500 - 2500);
       final interpolatedColor =
           Color.lerp(warmWhite, coolWhite, t) ?? warmWhite;
       return Icon(Icons.lightbulb, color: interpolatedColor, size: size);
     }
 
-    // Use _lightColor for RGB mode
     return Icon(Icons.lightbulb, color: _lightColor, size: size);
   }
 
@@ -540,86 +547,35 @@ class _LightControlScreenState extends State<LightControlScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: widget.constraints.maxWidth * 0.55,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          colorScheme.primary.withOpacity(0.1),
-                          colorScheme.primaryContainer.withOpacity(0.1),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(32),
-                    ),
-                    child: Center(
-                      child: FractionallySizedBox(
-                        widthFactor: 0.6,
-                        child: AspectRatio(
-                          aspectRatio: 1,
-                          child: _buildBulbIcon(
-                            widget.constraints.maxWidth * 0.42,
-                          ),
-                        ),
-                      ),
+              Container(
+                width: double.infinity,
+                height: widget.constraints.maxWidth * 0.55,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colorScheme.primary.withOpacity(0.1),
+                      colorScheme.primaryContainer.withOpacity(0.1),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(32),
+                ),
+                child: Center(
+                  child: FractionallySizedBox(
+                    widthFactor: 0.6,
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: _buildBulbIcon(widget.constraints.maxWidth * 0.42),
                     ),
                   ),
-                  Positioned(
-                    bottom: -widget.constraints.maxWidth * 0.09,
-                    child: Material(
-                      shape: const CircleBorder(),
-                      elevation: 8,
-                      shadowColor: Colors.black45,
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: () {
-                          final newState = !_isLedOn;
-                          setState(() {
-                            _isLedOn = newState;
-                          });
-                          widget.onLightStateChanged(newState);
-                          if (newState) {
-                            _sendLightColor(_lightColor);
-                            _sendLightCct();
-                          } else {
-                            _sendLightColor(Colors.black);
-                          }
-                        },
-                        child: Container(
-                          width: widget.constraints.maxWidth * 0.17,
-                          height: widget.constraints.maxWidth * 0.17,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _isLedOn
-                                ? Colors.yellow
-                                : colorScheme.onSurface.withOpacity(0.15),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.power_settings_new,
-                              color: _isLedOn
-                                  ? Colors.white
-                                  : colorScheme.onSurface.withOpacity(0.5),
-                              size: widget.constraints.maxWidth * 0.09,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
               SizedBox(height: availableHeight * 0.09),
               AbsorbPointer(
-                absorbing: !_isLedOn,
+                absorbing: !widget.isDeviceOn,
                 child: Opacity(
-                  opacity: _isLedOn ? 1.0 : 0.4,
+                  opacity: widget.isDeviceOn ? 1.0 : 0.4,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
