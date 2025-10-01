@@ -43,6 +43,14 @@ class _LightControlScreenState extends State<LightControlScreen> {
     }
   }
 
+  Color _cctToColor(double cct) {
+    // Interpolate between warm white and cool white
+    const warmWhite = Color(0xFFFFD700); // warm
+    const coolWhite = Color(0xFFE6F0FA); // cold
+    final t = ((cct - 2500) / (6500 - 2500)).clamp(0.0, 1.0);
+    return Color.lerp(warmWhite, coolWhite, t) ?? warmWhite;
+  }
+
   void _sendLightCct() {
     final cct = _lightCct.toInt().clamp(2500, 6500);
     final highByte = (cct >> 8) & 0xFF;
@@ -53,6 +61,16 @@ class _LightControlScreenState extends State<LightControlScreen> {
       print(
         'Sent CCT: ${cct}K (Hex: ${packet.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')})',
       );
+      // Update color to match CCT
+      final cctColor = _cctToColor(_lightCct);
+      setState(() {
+        _lightColor = cctColor;
+        _red = cctColor.red.toDouble();
+        _green = cctColor.green.toDouble();
+        _blue = cctColor.blue.toDouble();
+        _stripPosition = _calculateStripPosition(cctColor);
+      });
+      _sendLightColor(cctColor); // Also send RGB for visual sync
     } catch (e) {
       print('BLE send error (CCT): $e');
     }
@@ -130,16 +148,30 @@ class _LightControlScreenState extends State<LightControlScreen> {
                     final newCct = (value / 100).round() * 100.0;
                     setState(() {
                       _lightCct = newCct;
+                      // Update color live as slider moves
+                      final cctColor = _cctToColor(newCct);
+                      _lightColor = cctColor;
+                      _red = cctColor.red.toDouble();
+                      _green = cctColor.green.toDouble();
+                      _blue = cctColor.blue.toDouble();
+                      _stripPosition = _calculateStripPosition(cctColor);
                     });
                     print('CCT slider dragging: ${newCct.toInt()}K');
+                    _sendLightColor(_cctToColor(newCct)); // Live update RGB
                   },
                   onChangeEnd: (value) {
                     final newCct = (value / 100).round() * 100.0;
                     setState(() {
                       _lightCct = newCct;
+                      final cctColor = _cctToColor(newCct);
+                      _lightColor = cctColor;
+                      _red = cctColor.red.toDouble();
+                      _green = cctColor.green.toDouble();
+                      _blue = cctColor.blue.toDouble();
+                      _stripPosition = _calculateStripPosition(cctColor);
                     });
                     print('CCT slider drag ended: ${newCct.toInt()}K');
-                    _sendLightCct();
+                    _sendLightCct(); // This will also update color and send RGB
                   },
                 ),
               ),
