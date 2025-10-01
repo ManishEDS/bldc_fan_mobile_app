@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print, use_build_context_synchronously, constant_identifier_names, unused_field, deprecated_member_use
+// ignore_for_file: avoid_print, use_build_context_synchronously, constant_identifier_names, unused_field,
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -166,6 +166,13 @@ class _FanControlScreenState extends State<FanControlScreen> {
     final availableHeight = widget.constraints.maxHeight;
     final availableWidth = widget.constraints.maxWidth;
 
+    // Responsive font size helper
+    double responsiveFont(double baseSize) {
+      // Use width as reference, but never enlarge above baseSize
+      double scale = availableWidth / 400.0; // 400 is a typical mobile width
+      return min(baseSize, baseSize * scale);
+    }
+
     return SafeArea(
       child: Center(
         child: SingleChildScrollView(
@@ -183,8 +190,8 @@ class _FanControlScreenState extends State<FanControlScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      colorScheme.primary.withOpacity(0.1),
-                      colorScheme.primaryContainer.withOpacity(0.1),
+                      colorScheme.primary.withValues(alpha: 0.1),
+                      colorScheme.primaryContainer.withValues(alpha: 0.1),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -210,8 +217,8 @@ class _FanControlScreenState extends State<FanControlScreen> {
                       Text(
                         'Bluetooth is required to control.',
                         style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.7),
-                          fontSize: mediaQuery.textScaleFactor * 10,
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
+                          fontSize: responsiveFont(10),
                         ),
                       ),
                       SizedBox(height: availableHeight * 0.04),
@@ -241,17 +248,23 @@ class _FanControlScreenState extends State<FanControlScreen> {
                               gradient: RadialGradient(
                                 colors: [
                                   colorScheme.surfaceContainerHighest
-                                      .withOpacity(0.2),
-                                  colorScheme.surfaceContainer.withOpacity(0.1),
+                                      .withValues(alpha: 0.2),
+                                  colorScheme.surfaceContainer.withValues(
+                                    alpha: 0.1,
+                                  ),
                                 ],
                               ),
                               border: Border.all(
-                                color: colorScheme.primary.withOpacity(0.4),
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.4,
+                                ),
                                 width: 4,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: colorScheme.primary.withOpacity(0.08),
+                                  color: colorScheme.primary.withValues(
+                                    alpha: 0.08,
+                                  ),
                                   blurRadius: 12,
                                   spreadRadius: 2,
                                 ),
@@ -269,8 +282,8 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                     axisLineStyle: AxisLineStyle(
                                       thickness: 0.2,
                                       thicknessUnit: GaugeSizeUnit.factor,
-                                      color: colorScheme.primary.withOpacity(
-                                        0.15,
+                                      color: colorScheme.primary.withValues(
+                                        alpha: 0.15,
                                       ),
                                     ),
                                     pointers: <GaugePointer>[
@@ -317,9 +330,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                               ?.copyWith(
                                                 color: colorScheme.onSurface,
                                                 fontWeight: FontWeight.bold,
-                                                fontSize:
-                                                    mediaQuery.textScaleFactor *
-                                                    24,
+                                                fontSize: responsiveFont(24),
                                               ),
                                         ),
                                         positionFactor: 0.1,
@@ -360,7 +371,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
                                 height: availableHeight * 0.05,
-                                fontSize: mediaQuery.textScaleFactor * 14,
+                                fontSize: responsiveFont(14),
                               ),
                             ),
                             SizedBox(width: availableWidth * 0.04),
@@ -382,7 +393,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                 colorScheme: colorScheme,
                                 textTheme: textTheme,
                                 height: availableHeight * 0.05,
-                                fontSize: mediaQuery.textScaleFactor * 14,
+                                fontSize: responsiveFont(14),
                               ),
                             ),
                           ],
@@ -405,7 +416,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                   style: textTheme.titleMedium?.copyWith(
                                     color: colorScheme.onSurface,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: mediaQuery.textScaleFactor * 16,
+                                    fontSize: responsiveFont(16),
                                   ),
                                 ),
                                 SizedBox(width: availableWidth * 0.03),
@@ -429,8 +440,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                       style: textTheme.bodyMedium?.copyWith(
                                         color: colorScheme.onPrimary,
                                         fontWeight: FontWeight.bold,
-                                        fontSize:
-                                            mediaQuery.textScaleFactor * 12,
+                                        fontSize: responsiveFont(12),
                                       ),
                                     ),
                                   ),
@@ -460,7 +470,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                     textTheme: textTheme,
                                     width: availableWidth * 0.15,
                                     height: availableHeight * 0.05,
-                                    fontSize: mediaQuery.textScaleFactor * 12,
+                                    fontSize: responsiveFont(12),
                                   ),
                                   SizedBox(width: availableWidth * 0.02),
                                   _TimerButton(
@@ -471,7 +481,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                     textTheme: textTheme,
                                     width: availableWidth * 0.15,
                                     height: availableHeight * 0.05,
-                                    fontSize: mediaQuery.textScaleFactor * 12,
+                                    fontSize: responsiveFont(12),
                                   ),
                                   SizedBox(width: availableWidth * 0.02),
                                   _TimerButton(
@@ -482,7 +492,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                     textTheme: textTheme,
                                     width: availableWidth * 0.15,
                                     height: availableHeight * 0.05,
-                                    fontSize: mediaQuery.textScaleFactor * 12,
+                                    fontSize: responsiveFont(12),
                                   ),
                                   SizedBox(width: availableWidth * 0.02),
                                   _TimerButton(
@@ -493,7 +503,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                     textTheme: textTheme,
                                     width: availableWidth * 0.15,
                                     height: availableHeight * 0.05,
-                                    fontSize: mediaQuery.textScaleFactor * 12,
+                                    fontSize: responsiveFont(12),
                                   ),
                                   SizedBox(width: availableWidth * 0.02),
                                   _TimerButton(
@@ -504,7 +514,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                     textTheme: textTheme,
                                     width: availableWidth * 0.15,
                                     height: availableHeight * 0.05,
-                                    fontSize: mediaQuery.textScaleFactor * 12,
+                                    fontSize: responsiveFont(12),
                                   ),
                                   SizedBox(width: availableWidth * 0.02),
                                   _TimerButton(
@@ -515,7 +525,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                     textTheme: textTheme,
                                     width: availableWidth * 0.15,
                                     height: availableHeight * 0.05,
-                                    fontSize: mediaQuery.textScaleFactor * 12,
+                                    fontSize: responsiveFont(12),
                                   ),
                                   SizedBox(width: availableWidth * 0.02),
                                   _TimerButton(
@@ -526,7 +536,7 @@ class _FanControlScreenState extends State<FanControlScreen> {
                                     textTheme: textTheme,
                                     width: availableWidth * 0.15,
                                     height: availableHeight * 0.05,
-                                    fontSize: mediaQuery.textScaleFactor * 12,
+                                    fontSize: responsiveFont(12),
                                   ),
                                 ],
                               ),
@@ -662,7 +672,7 @@ class _FanPainter extends CustomPainter {
     canvas.drawCircle(
       center,
       size.width * 0.13,
-      Paint()..color = Colors.grey.withOpacity(0.3),
+      Paint()..color = Colors.grey.withValues(alpha: 0.3),
     );
     canvas.drawCircle(center, size.width * 0.09, Paint()..color = centerColor);
   }
@@ -713,7 +723,7 @@ class _TimerButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: selected
               ? null
-              : Border.all(color: colorScheme.outline.withOpacity(0.2)),
+              : Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
         ),
         child: Center(
           child: Text(
@@ -721,7 +731,7 @@ class _TimerButton extends StatelessWidget {
             style: textTheme.bodyMedium?.copyWith(
               color: selected ? colorScheme.onPrimary : colorScheme.onSurface,
               fontWeight: FontWeight.bold,
-              fontSize: fontSize,
+              fontSize: fontSize, // Already passed responsiveFont
             ),
           ),
         ),
@@ -769,7 +779,7 @@ class _SpeedBoostButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: selected
               ? null
-              : Border.all(color: colorScheme.outline.withOpacity(0.2)),
+              : Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
         ),
         child: Center(
           child: Text(

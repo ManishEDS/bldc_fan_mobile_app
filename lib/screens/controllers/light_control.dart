@@ -72,7 +72,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
           style: textTheme.titleMedium?.copyWith(
             color: colorScheme.onSurface,
             fontWeight: FontWeight.bold,
-            fontSize: mediaQuery.textScaleFactor * 16,
+            fontSize: mediaQuery.textScaler.scale(16),
           ),
         ),
         SizedBox(height: widget.constraints.maxHeight * 0.01),
@@ -177,7 +177,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                 '${_lightCct.toInt()}K',
                 style: textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  fontSize: mediaQuery.textScaleFactor * 12,
+                  fontSize: mediaQuery.textScaler.scale(12),
                 ),
               ),
             ),
@@ -286,7 +286,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
           style: textTheme.titleMedium?.copyWith(
             color: colorScheme.onSurface,
             fontWeight: FontWeight.bold,
-            fontSize: mediaQuery.textScaleFactor * 16,
+            fontSize: mediaQuery.textScaler.scale(16),
           ),
         ),
         SizedBox(height: widget.constraints.maxHeight * 0.01),
@@ -298,9 +298,14 @@ class _LightControlScreenState extends State<LightControlScreen> {
               child: Text(
                 'R',
                 style: textTheme.bodyLarge?.copyWith(
-                  color: Colors.red,
+                  color: Color.fromARGB(
+                    255,
+                    (Colors.red.red * 255.0).round() & 0xff,
+                    0,
+                    0,
+                  ), // Fix for deprecated 'red'
                   fontWeight: FontWeight.bold,
-                  fontSize: mediaQuery.textScaleFactor * 14,
+                  fontSize: mediaQuery.textScaler.scale(14),
                 ),
               ),
             ),
@@ -351,7 +356,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                 '${_red.round()}',
                 style: textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  fontSize: mediaQuery.textScaleFactor * 12,
+                  fontSize: mediaQuery.textScaler.scale(12),
                 ),
               ),
             ),
@@ -367,7 +372,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                 style: textTheme.bodyLarge?.copyWith(
                   color: Colors.green,
                   fontWeight: FontWeight.bold,
-                  fontSize: mediaQuery.textScaleFactor * 14,
+                  fontSize: mediaQuery.textScaler.scale(14),
                 ),
               ),
             ),
@@ -418,7 +423,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                 '${_green.round()}',
                 style: textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  fontSize: mediaQuery.textScaleFactor * 12,
+                  fontSize: mediaQuery.textScaler.scale(12),
                 ),
               ),
             ),
@@ -434,7 +439,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                 style: textTheme.bodyLarge?.copyWith(
                   color: Colors.blue,
                   fontWeight: FontWeight.bold,
-                  fontSize: mediaQuery.textScaleFactor * 14,
+                  fontSize: mediaQuery.textScaler.scale(14),
                 ),
               ),
             ),
@@ -485,7 +490,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                 '${_blue.round()}',
                 style: textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  fontSize: mediaQuery.textScaleFactor * 12,
+                  fontSize: mediaQuery.textScaler.scale(12),
                 ),
               ),
             ),
@@ -553,8 +558,8 @@ class _LightControlScreenState extends State<LightControlScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      colorScheme.primary.withOpacity(0.1),
-                      colorScheme.primaryContainer.withOpacity(0.1),
+                      colorScheme.primary.withValues(alpha: 0.1),
+                      colorScheme.primaryContainer.withValues(alpha: 0.1),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -584,7 +589,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                         style: textTheme.titleMedium?.copyWith(
                           color: colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
-                          fontSize: mediaQuery.textScaleFactor * 16,
+                          fontSize: mediaQuery.textScaler.scale(16),
                         ),
                       ),
                       SizedBox(height: availableHeight * 0.015),
@@ -615,7 +620,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                                     ? Colors.black
                                     : Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: mediaQuery.textScaleFactor * 14,
+                                fontSize: mediaQuery.textScaler.scale(14),
                               ),
                             ),
                           ),
@@ -732,7 +737,7 @@ class GradientRectSliderTrackShape extends SliderTrackShape {
     final inactivePaint = Paint()
       ..shader = gradient.createShader(rect)
       ..colorFilter = ColorFilter.mode(
-        Colors.black.withOpacity(darkenInactive ? 0.5 : 0.0),
+        Colors.black.withValues(alpha: darkenInactive ? 0.5 : 0.0),
         BlendMode.srcOver,
       );
 

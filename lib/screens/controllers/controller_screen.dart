@@ -1,5 +1,5 @@
 // controller_screen.dart
-// ignore_for_file: avoid_print, use_build_context_synchronously, constant_identifier_names, unused_field, deprecated_member_use
+// ignore_for_file: avoid_print, use_build_context_synchronously, constant_identifier_names, unused_field,
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -174,7 +174,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
             style: textTheme.titleLarge?.copyWith(
               color: colorScheme.onSurface,
               fontWeight: FontWeight.bold,
-              fontSize: mediaQuery.textScaleFactor * 20,
+              fontSize: mediaQuery.textScaler.scale(20),
             ),
           ),
           centerTitle: true,
@@ -188,7 +188,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
                   Icons.power_settings_new,
                   color: _isDeviceOn
                       ? Colors.green
-                      : colorScheme.onSurface.withOpacity(0.5),
+                      : colorScheme.onSurface.withValues(alpha: 0.5),
                   size: isLandscape
                       ? mediaQuery.size.width * 0.05
                       : mediaQuery.size.width * 0.07,
@@ -253,14 +253,14 @@ class _ControllerScreenState extends State<ControllerScreen> {
                                     ? Colors.blue
                                     : colorScheme.error,
                                 fontWeight: FontWeight.bold,
-                                fontSize: mediaQuery.textScaleFactor * 16,
+                                fontSize: mediaQuery.textScaler.scale(16),
                               ),
                             ),
                             SizedBox(height: mediaQuery.size.height * 0.01),
                             Text(
                               'Device: ${widget.deviceName}',
                               style: textTheme.bodyLarge?.copyWith(
-                                fontSize: mediaQuery.textScaleFactor * 14,
+                                fontSize: mediaQuery.textScaler.scale(14),
                               ),
                             ),
                             SizedBox(height: mediaQuery.size.height * 0.01),
@@ -270,7 +270,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
                                 color: colorScheme.onSurface.withValues(
                                   alpha: 0.6,
                                 ),
-                                fontSize: mediaQuery.textScaleFactor * 12,
+                                fontSize: mediaQuery.textScaler.scale(12),
                               ),
                             ),
                             if (_connectionState ==
@@ -343,8 +343,8 @@ class _ControllerScreenState extends State<ControllerScreen> {
           iconSize: isLandscape
               ? mediaQuery.size.width * 0.04
               : mediaQuery.size.width * 0.06,
-          selectedFontSize: mediaQuery.textScaleFactor * 12,
-          unselectedFontSize: mediaQuery.textScaleFactor * 10,
+          selectedFontSize: mediaQuery.textScaler.scale(12),
+          unselectedFontSize: mediaQuery.textScaler.scale(10),
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.air), label: 'Fan'),
             BottomNavigationBarItem(
