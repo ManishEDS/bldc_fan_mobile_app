@@ -577,140 +577,153 @@ class _LightControlScreenState extends State<LightControlScreen> {
         .toUpperCase();
 
     return SafeArea(
-      child: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(availableWidth * 0.04),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: double.infinity,
-                height: widget.constraints.maxWidth * 0.55,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      colorScheme.primary.withValues(alpha: 0.1),
-                      colorScheme.primaryContainer.withValues(alpha: 0.1),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(32),
+      child: Column(
+        children: [
+          // Fixed bulb container
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: availableWidth * 0.04),
+            child: Container(
+              width: double.infinity,
+              height: widget.constraints.maxWidth * 0.55,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primary.withValues(alpha: 0.1),
+                    colorScheme.primaryContainer.withValues(alpha: 0.1),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Center(
-                  child: FractionallySizedBox(
-                    widthFactor: 0.6,
-                    child: AspectRatio(
-                      aspectRatio: 1,
-                      child: _buildBulbIcon(widget.constraints.maxWidth * 0.42),
+                borderRadius: BorderRadius.circular(32),
+              ),
+              child: Center(
+                child: FractionallySizedBox(
+                  widthFactor: 0.6,
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: _buildBulbIcon(widget.constraints.maxWidth * 0.42),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Scrollable controls
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: availableWidth * 0.04),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: availableHeight * 0.09),
+                  AbsorbPointer(
+                    absorbing: !widget.isDeviceOn,
+                    child: Opacity(
+                      opacity: widget.isDeviceOn ? 1.0 : 0.4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Color',
+                            style: textTheme.titleMedium?.copyWith(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                              fontSize: mediaQuery.textScaler.scale(16),
+                            ),
+                          ),
+                          SizedBox(height: availableHeight * 0.015),
+                          Center(
+                            child: _buildRGBStrip(
+                              colorScheme,
+                              availableWidth * 0.9,
+                            ),
+                          ),
+                          SizedBox(height: availableHeight * 0.015),
+                          Center(
+                            child: Container(
+                              width: availableWidth * 0.9,
+                              height: availableWidth * 0.1,
+                              decoration: BoxDecoration(
+                                color: _lightColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: colorScheme.outline,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '#$hexColor',
+                                  style: TextStyle(
+                                    color: _lightColor.computeLuminance() > 0.5
+                                        ? Colors.black
+                                        : Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: mediaQuery.textScaler.scale(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: availableHeight * 0.02),
+                          _buildRGBSliders(
+                            colorScheme,
+                            textTheme,
+                            availableWidth,
+                          ),
+                          SizedBox(height: availableHeight * 0.02),
+                          _buildCctSlider(context),
+                          SizedBox(height: availableHeight * 0.02),
+                          Center(
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.camera_alt,
+                                size: availableWidth * 0.07,
+                              ),
+                              color: colorScheme.primary,
+                              tooltip: 'Pick Color from Camera',
+                              onPressed: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const CameraColorPickerPage(),
+                                  ),
+                                );
+                                if (result != null &&
+                                    result is Map<String, int>) {
+                                  final rr = result['r'] ?? 0;
+                                  final gg = result['g'] ?? 0;
+                                  final bb = result['b'] ?? 0;
+                                  final selectedColor = Color.fromRGBO(
+                                    rr,
+                                    gg,
+                                    bb,
+                                    1.0,
+                                  );
+                                  setState(() {
+                                    _lightColor = selectedColor;
+                                    _red = rr.toDouble();
+                                    _green = gg.toDouble();
+                                    _blue = bb.toDouble();
+                                    _stripPosition = _calculateStripPosition(
+                                      selectedColor,
+                                    );
+                                  });
+                                  _sendLightColor(selectedColor);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                  SizedBox(height: availableHeight * 0.05),
+                ],
               ),
-              SizedBox(height: availableHeight * 0.09),
-              AbsorbPointer(
-                absorbing: !widget.isDeviceOn,
-                child: Opacity(
-                  opacity: widget.isDeviceOn ? 1.0 : 0.4,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Color',
-                        style: textTheme.titleMedium?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                          fontSize: mediaQuery.textScaler.scale(16),
-                        ),
-                      ),
-                      SizedBox(height: availableHeight * 0.015),
-                      Center(
-                        child: _buildRGBStrip(
-                          colorScheme,
-                          availableWidth * 0.9,
-                        ),
-                      ),
-                      SizedBox(height: availableHeight * 0.015),
-                      Center(
-                        child: Container(
-                          width: availableWidth * 0.9,
-                          height: availableWidth * 0.1,
-                          decoration: BoxDecoration(
-                            color: _lightColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: colorScheme.outline,
-                              width: 2,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '#$hexColor',
-                              style: TextStyle(
-                                color: _lightColor.computeLuminance() > 0.5
-                                    ? Colors.black
-                                    : Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: mediaQuery.textScaler.scale(14),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: availableHeight * 0.02),
-                      _buildRGBSliders(colorScheme, textTheme, availableWidth),
-                      SizedBox(height: availableHeight * 0.02),
-                      _buildCctSlider(context),
-                      SizedBox(height: availableHeight * 0.02),
-                      Center(
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.camera_alt,
-                            size: availableWidth * 0.07,
-                          ),
-                          color: colorScheme.primary,
-                          tooltip: 'Pick Color from Camera',
-                          onPressed: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const CameraColorPickerPage(),
-                              ),
-                            );
-                            if (result != null && result is Map<String, int>) {
-                              final rr = result['r'] ?? 0;
-                              final gg = result['g'] ?? 0;
-                              final bb = result['b'] ?? 0;
-                              final selectedColor = Color.fromRGBO(
-                                rr,
-                                gg,
-                                bb,
-                                1.0,
-                              );
-                              setState(() {
-                                _lightColor = selectedColor;
-                                _red = rr.toDouble();
-                                _green = gg.toDouble();
-                                _blue = bb.toDouble();
-                                _stripPosition = _calculateStripPosition(
-                                  selectedColor,
-                                );
-                              });
-                              _sendLightColor(selectedColor);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: availableHeight * 0.05),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

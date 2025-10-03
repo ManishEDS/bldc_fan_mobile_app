@@ -45,5 +45,18 @@
     <true/>
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
+    <!-- Location Permissions -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This app requires access to your location to connect to nearby devices.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>This app requires access to your location even when the app is in the background to remain connected with the bluetooth.</string>
+    <!-- Bluetooth Permissions -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>This app uses Bluetooth to connect and communicate with external devices.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>This app needs Bluetooth access to discover and connect to peripherals for fan controls.</string>
+    <!-- Camera Permission -->
+    <key>NSCameraUsageDescription</key>
+    <string>This app requires access to your camera for capturing images or videos to featch the exact color of the pixcel from image.</string>
   </dict>
 </plist>
