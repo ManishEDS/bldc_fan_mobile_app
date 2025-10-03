@@ -32,7 +32,7 @@ The app features a modern Material 3 design with light/dark theme support, portr
 
 1. **Clone the Repo**:
    ```
-   git clone <your-repo-url>
+   git clone https://github.com/ROHIT-EDS/BLDCFAN
    cd bldcfan
    ```
 
