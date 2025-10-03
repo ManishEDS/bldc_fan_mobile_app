@@ -1,7 +1,5 @@
 # BLDC Fan Controller
 
-![Flutter](https://flutter.dev/images/flutter-logo-sharing.png)
-
 **BLDC Fan** is a cross-platform Flutter mobile application designed for controlling Brushless DC (BLDC) ceiling fans and integrated smart lights via Bluetooth Low Energy (BLE). Built for Android and iOS, it provides an intuitive interface for discovering, connecting, and managing fans in different rooms. Whether you're adjusting fan speeds, setting timers, or customizing RGB/CCT lighting with a camera color picker, this app makes smart home fan control seamless and fun.
 
 The app features a modern Material 3 design with light/dark theme support, portrait-only orientation, and smooth animations like rotating fan graphics.
@@ -22,17 +20,6 @@ The app features a modern Material 3 design with light/dark theme support, portr
 - **Offline Persistence**: Saves device info, rooms, and last settings using SharedPreferences.
 - **Animations & UX**: Rotating fan visuals, air-blowing effects on splash, and responsive layouts.
 
-## Screenshots
-
-| Splash Screen | Device Scanning | Home Dashboard |
-|---------------|-----------------|----------------|
-| ![Splash](screenshots/splash.png) | ![Scanning](screenshots/scanning.png) | ![Home](screenshots/home.png) |
-
-| Fan Controls | Light Controls | Camera Picker |
-|--------------|----------------|---------------|
-| ![Fan](screenshots/fan.png) | ![Light](screenshots/light.png) | ![Camera](screenshots/camera.png) |
-
-*(Add actual screenshots to `/screenshots/` folder for a polished repo.)*
 
 ## Getting Started
 
