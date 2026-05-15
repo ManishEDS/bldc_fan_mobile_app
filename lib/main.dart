@@ -1,3 +1,6 @@
+import 'package:bldcfan/screens/camera_color_picker.dart';
+import 'package:bldcfan/screens/home_page.dart';
+import 'package:bldcfan/screens/room_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // <-- Add this import
 import 'screens/splash.dart';

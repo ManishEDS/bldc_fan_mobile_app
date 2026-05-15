@@ -33,7 +33,8 @@ class _FanControlScreenState extends State<FanControlScreen> {
   static const int FANOFF = 0x06;
   static const int GEAR1 = 0x05;
   static const int GEAR2 = 0x0F;
-  static const int GEAR3 = 0x0A;
+  // static const int GEAR3 = 0x0A;
+  static const int GEAR3 = 0x2A;
   static const int GEAR4 = 0x03;
   static const int GEAR5 = 0x02;
   static const int GEAR6 = 0x1A;
@@ -41,7 +42,8 @@ class _FanControlScreenState extends State<FanControlScreen> {
   static const int R5M = 0x1F;
   static const int R30M = 0xDD;
   static const int R1H = 0x10;
-  static const int R2H = 0x0D;
+  // static const int R2H = 0x0D;
+  static const int R2H = 0x3A;
   static const int R4H = 0x01;
   static const int R6H = 0x09;
   static const int R8H = 0x07;
