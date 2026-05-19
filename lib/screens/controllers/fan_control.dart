@@ -130,12 +130,12 @@ class _FanControlScreenState extends State<FanControlScreen> {
     final prefs = await SharedPreferences.getInstance();
     final lastSpeed = prefs.getDouble('last_fan_speed') ?? 5.0;
     setState(() {
-      _fanSpeed = lastSpeed.clamp(1.0, 5.0);
+      _fanSpeed = lastSpeed.clamp(1.0, 7.0);
     });
   }
 
   void _sendFanSpeed() {
-    final snapped = _fanSpeed.round().clamp(1, 5);
+    final snapped = _fanSpeed.round().clamp(1, 7);
     try {
       switch (snapped) {
         case 1:
@@ -152,6 +152,12 @@ class _FanControlScreenState extends State<FanControlScreen> {
           break;
         case 5:
           BLEHelper.send([GEAR5]);
+          break;
+        case 6:
+          BLEHelper.send([GEAR6]);
+          break;
+        case 7:
+          BLEHelper.send([GEAR7]);
           break;
       }
     } catch (e) {

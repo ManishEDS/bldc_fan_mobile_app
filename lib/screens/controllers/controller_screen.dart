@@ -38,6 +38,8 @@ class _ControllerScreenState extends State<ControllerScreen> {
   bool _isLedOn = false;
   bool _isDeviceOn = false;
   int _currentIndex = 0;
+  bool _isBuzzerOn = false;
+  bool _isLittleLedOn = false;
 
   void _updateFanState(bool isOn) {
     setState(() {
@@ -48,6 +50,18 @@ class _ControllerScreenState extends State<ControllerScreen> {
   void _updateLightState(bool isOn) {
     setState(() {
       _isLedOn = isOn;
+    });
+  }
+
+  void _updateBuzzerOn(bool isOn) {
+    setState(() {
+      _isBuzzerOn = isOn;
+    });
+  }
+
+  void _updateLittleLedOn(bool isOn) {
+    setState(() {
+      _isLittleLedOn = isOn;
     });
   }
 
@@ -71,6 +85,42 @@ class _ControllerScreenState extends State<ControllerScreen> {
         await BLEHelper.send([0x06]); // FANOFF
         // Light OFF
         await BLEHelper.send([0xD5, 0, 0, 0, 0x5D]);
+      }
+    } catch (e) {
+      print('BLE send error: $e');
+    }
+  }
+
+  void _toggleBuzzer() async {
+    setState(() {
+      _isBuzzerOn = !_isBuzzerOn;
+    });
+    _updateBuzzerOn(_isBuzzerOn);
+    try {
+      if (_isBuzzerOn) {
+        // Buzzer ON
+        await BLEHelper.send([0x4A]);
+      } else {
+        // Buzzer OFF
+        await BLEHelper.send([0x5A]);
+      }
+    } catch (e) {
+      print('BLE send error: $e');
+    }
+  }
+
+  void _toggleLittleLed() async {
+    setState(() {
+      _isLittleLedOn = !_isLittleLedOn;
+    });
+    _updateLittleLedOn(_isLittleLedOn);
+    try {
+      if (_isLittleLedOn) {
+        // Little Led ON
+        await BLEHelper.send([0x6A]);
+      } else {
+        // Little led OFF
+        await BLEHelper.send([0x7A]);
       }
     } catch (e) {
       print('BLE send error: $e');
@@ -181,7 +231,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
           actions: [
             Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: mediaQuery.size.width * 0.02,
+                horizontal: mediaQuery.size.width * 0.002,
               ),
               child: IconButton(
                 icon: Icon(
@@ -199,7 +249,43 @@ class _ControllerScreenState extends State<ControllerScreen> {
             ),
             Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: mediaQuery.size.width * 0.02,
+                horizontal: mediaQuery.size.width * 0.002,
+              ),
+              child: IconButton(
+                icon: Icon(
+                  _isLittleLedOn ? Icons.lightbulb : Icons.lightbulb,
+                  color: _isLittleLedOn
+                      ? Colors.blueAccent
+                      : colorScheme.onSurface.withValues(alpha: 0.5),
+                  size: isLandscape
+                      ? mediaQuery.size.width * 0.05
+                      : mediaQuery.size.width * 0.07,
+                ),
+                onPressed: _toggleLittleLed,
+                tooltip: _isLittleLedOn ? 'Turn LED Off' : 'Turn LED On',
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: mediaQuery.size.width * 0.002,
+              ),
+              child: IconButton(
+                icon: Icon(
+                  _isBuzzerOn ? Icons.notifications : Icons.notifications_off,
+                  color: _isBuzzerOn
+                      ? Colors.orange
+                      : colorScheme.onSurface.withValues(alpha: 0.5),
+                  size: isLandscape
+                      ? mediaQuery.size.width * 0.05
+                      : mediaQuery.size.width * 0.07,
+                ),
+                onPressed: _toggleBuzzer,
+                tooltip: _isBuzzerOn ? 'Turn Buzzer Off' : 'Turn Buzzer On',
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: mediaQuery.size.width * 0.002,
               ),
               child: IconButton(
                 icon: Icon(
